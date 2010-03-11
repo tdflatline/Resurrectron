@@ -1,0 +1,21 @@
+diff -ur nltk-2.0b8/nltk/tag/hmm.py nltk-2.0b8.mine/nltk/tag/hmm.py
+--- nltk-2.0b8/nltk/tag/hmm.py	2010-01-26 13:29:18.000000000 -0800
++++ nltk-2.0b8.mine/nltk/tag/hmm.py	2010-03-09 15:45:04.106665744 -0800
+@@ -453,7 +453,7 @@
+         sequence.reverse()
+         return sequence
+ 
+-    def random_sample(self, rng, length):
++    def random_sample(self, rng, length, terminal=None):
+         """
+         Randomly sample the HMM to generate a sentence of a given length. This
+         samples the prior distribution then the observation distribution and
+@@ -487,6 +487,8 @@
+             symbol = self._sample_probdist(self._outputs[state],
+                                       rng.random(), self._symbols)
+             tokens.append((symbol, state))
++            if terminal and state.endswith(terminal):
++              return tokens
+ 
+         return tokens
+ 

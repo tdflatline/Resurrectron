@@ -1,0 +1,14 @@
+diff -ur cdl3-1.2.7/rts/cdl3rts.c cdl3-1.2.7.mine/rts/cdl3rts.c
+--- cdl3-1.2.7/rts/cdl3rts.c	2006-01-04 03:35:45.000000000 -0800
++++ cdl3-1.2.7.mine/rts/cdl3rts.c	2010-03-10 11:54:26.070628330 -0800
+@@ -363,8 +363,8 @@
+       fprintf (stderr,
+ 	     "%-9ld %-9ld %-9ld %-9ld %-9ld %-9ld %-7.2f %-7.2f\n",
+ 	     requested, used, freed, attaches, detaches, frees,
+-	     0.01 * (float) ((t.tms_utime * 100) / CLK_TCK),
+-	     0.01 * (float) ((t.tms_stime * 100) / CLK_TCK));
++	     0.01 * (float) ((t.tms_utime * 100) ),
++	     0.01 * (float) ((t.tms_stime * 100)));
+       if (saved_calls)
+ 	fprintf (stderr, "Saved %ld calls thru inlining.\n", saved_calls);
+       if (array_ref)
