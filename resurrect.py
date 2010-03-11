@@ -9,7 +9,6 @@ import nltk
 import simplejson as json
 import os
 import re
-from nltk.corpus import PlaintextCorpusReader
 import pickle
 import random
 import math
@@ -163,6 +162,8 @@ class TagBin:
 # We still would have to reject a lot of tweets though.
 # There are a lot of them agfl parses as fragments with
 # unlabeled terminals.. It also needs really clean sentences.
+# We could translate the AGFL tags to nltk tags, and then
+# fall back to nltk when AGFL fails.
 def pos_tag(tokens):
   return nltk.pos_tag(tokens)
 
@@ -274,6 +275,10 @@ class URLClassifier:
 #  4. TODO: If score is 0, requery for "WTF buh uh huh dunno what talking about"
 #  5. FIXME: Return probabilistically based on score with some cutoff
 #  6. TODO: try to avoid replying to questions with questions. score lower.
+
+# TODO: Build the score vectors using both the tagged and untaged words
+# Then if tags and words match, you get more score than just tags,
+# but its not total fail if your question can't be parsed..
 class SearchableTextCollection:
   def __init__(self, texts, name=None):
     self._idf_cache = {}
@@ -592,7 +597,8 @@ class PhraseGenerator:
         print "Probability failure..."
         traceback.print_exc()
 
-  # XXX: move elsewhere?
+  # XXX: move elsewhere? This should be in the normalize class
+  # It should undo nltk.word_tokenize...
   def stringify_tags(self, tags):
     string = ""
     for t in tags:
