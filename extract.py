@@ -33,7 +33,7 @@ import libs.treebank
 # We could translate the AGFL tags to nltk tags, and then
 # fall back to nltk when AGFL fails.
 
-# XXX: Consider stripping out stuff we left in (esp for AGFL)
+# XXX: Consider temporarily stripping out stuff we left in (esp for AGFL)
 # ["#", "*", "@", "/"], and urls -> "Noun"
 def pos_tag(tokens):
   return nltk.pos_tag(tokens)
@@ -257,13 +257,19 @@ class TokenNormalizer:
     i = 0
     while i < tok_len-1:
       # XXX: Should we skip urls? or do something more clever..
-      if tokens[i] in self.skip_tokens or "://" in tokens[i]:
+      if tokens[i] in self.skip_tokens: #or "://" in tokens[i]:
         i += 1
         continue
       new_toks = self._normalize(tokens[i], tokens[i+1])
       i += len(new_toks)
       ret_tokens.extend(new_toks)
-    if i < tok_len: ret_tokens.extend(self._normalize(tokens[i], ""))
+    if i < tok_len:
+      if tokens[i] in self.skip_tokens: # or "://" in tokens[i]:
+        i += 1
+      else: ret_tokens.extend(self._normalize(tokens[i], ""))
+    # Add .
+    if ret_tokens and not curses.ascii.ispunct(ret_tokens[-1][-1]):
+      ret_tokens.append(".")
     return ret_tokens
 
   def denormalize_tokens(self, tokens):
@@ -336,9 +342,8 @@ class PhraseGenerator:
       hmm_symbols.update([t[0] for t in tags])
       sequence = []
 
-      # XXX: This first state is not transitioning right..
       tag = ("^ "*(o))
-      for t in xrange(o, min(l,len(tags))):
+      for t in xrange(0, min(l-o,len(tags))):
         tag += tags[t][1]+" "
       hmm_states.update(tag)
       #print "Adding initial Tag: "+str(tag)

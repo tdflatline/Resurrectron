@@ -94,6 +94,7 @@ class TreebankWordTokenizer(TokenizerI):
         return text.split()
 
     SNUGGLE_PUNCTS = set([ "$", "#", "@" ])
+    NONSNUGGLE_PUNCTS = set([ "&" ])
 
     # XXX: Super ghetto, but not critical path and I'm lazy.
     def detokenize(self, tokens):
@@ -102,7 +103,8 @@ class TreebankWordTokenizer(TokenizerI):
         text = ""
         while i < tok_len-1:
             if len(self.tokenize(tokens[i]+tokens[i+1])) == 2 and \
-                tokens[i+1] not in self.SNUGGLE_PUNCTS:
+                tokens[i+1] not in self.SNUGGLE_PUNCTS and \
+                tokens[i+1] not in self.NONSNUGGLE_PUNCTS:
                 text += tokens[i]+tokens[i+1]
                 i+=2
             else:
