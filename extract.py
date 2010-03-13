@@ -11,7 +11,7 @@ import nltk
 import simplejson as json
 import os
 import re
-import pickle
+import cPickle as pickle
 import random
 import curses.ascii
 import traceback
@@ -32,6 +32,9 @@ import libs.treebank
 # unlabeled terminals.. It also needs really clean sentences.
 # We could translate the AGFL tags to nltk tags, and then
 # fall back to nltk when AGFL fails.
+
+# XXX: Consider stripping out stuff we left in (esp for AGFL)
+# ["#", "*", "@", "/"], and urls -> "Noun"
 def pos_tag(tokens):
   return nltk.pos_tag(tokens)
 
@@ -52,6 +55,9 @@ def word_detokenize(tokens):
 # FIXME: Can we do anything clever with "!1!1!1" and "?//?/1!/"? Maybe a regex?
 class TokenNormalizer:
   def __init__(self):
+    # Tokens to remove entirely
+    self.skip_tokens = set(['"','(',')','[',']'])
+
     # One-to-one mapping, no context
     self.mono_map = { "u":"you", "r":"are", "m":"am", "c":"see", "n":"and",
                     "h8":"hate", "<3":"love", "thx":"thanks",
@@ -128,7 +134,6 @@ class TokenNormalizer:
         self.dual_counts[norm_tup] += 1
 
         # Preserve case for I
-        print norm_tup
         if isupper or norm_tup[0] == "i": tupd = (word_orig, next_word_orig)
         else: tupd = tup
         if norm_tup not in self.dual_denorm:
@@ -251,6 +256,10 @@ class TokenNormalizer:
     tok_len = len(tokens)
     i = 0
     while i < tok_len-1:
+      # XXX: Should we skip urls? or do something more clever..
+      if tokens[i] in self.skip_tokens or "://" in tokens[i]:
+        i += 1
+        continue
       new_toks = self._normalize(tokens[i], tokens[i+1])
       i += len(new_toks)
       ret_tokens.extend(new_toks)
@@ -279,6 +288,7 @@ class TokenNormalizer:
                "Whatcha up2? We're gonna go on a killing spree.",
                "Holy crap dood.",
                "Are you going out?",
+               "#Hi @I love/hate $0 http://yfrog.com/a3ss0sa *always* don't /you/....",
                "r u going out?"]
     if not norm: norm = TokenNormalizer()
     tokens = []
@@ -321,12 +331,12 @@ class PhraseGenerator:
     hmm_symbols = set()
     hmm_sequences = list()
 
-    # XXX: Something weird is happening with case here...
     for tags in tagged_phrases:
       #and len(tags) > l-1:
       hmm_symbols.update([t[0] for t in tags])
       sequence = []
 
+      # XXX: This first state is not transitioning right..
       tag = ("^ "*(o))
       for t in xrange(o, min(l,len(tags))):
         tag += tags[t][1]+" "
@@ -403,7 +413,7 @@ class CorpusSoul:
           for jtweet in fl.readlines():
             tweet = json.loads(jtweet)
             txt = tweet['text'].encode('ascii', 'ignore')
-            if re.search("( |^)RT ", " rt hi", re.IGNORECASE): continue
+            if re.search("( |^)RT ", txt, re.IGNORECASE): continue
             if txt[0] == '@': txt = re.sub('^@[\S]+ ', '', txt)
             tagged_tweet = pos_tag(self.normalizer.normalize_tokens(word_tokenize(txt)))
             if tagged_tweet: tagged_tweets.append(tagged_tweet)
@@ -433,14 +443,38 @@ class CorpusSoul:
     for t in tagged_tweets:
       self.normalizer.score_tokens(map(lambda x: x[0], t))
 
+    self.tagged_tweets = tagged_tweets
     self.voice = PhraseGenerator(tagged_tweets, self.normalizer)
     #self.tweet_collection = SearchableTextCollection(tweet_texts)
     #self.tweet_collection.generate(100)
 
+# Lousy hmm can't be pickled
+class SoulWriter:
+  def __init__(self):
+    pass
+
+  @classmethod
+  def write(cls, soul, f):
+    voice = soul.voice
+    soul.voice = None
+    pickle.dump(soul, f)
+    soul.voice = voice
+
+  @classmethod
+  def load(cls, f):
+    soul = pickle.load(f)
+    soul.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
+    return soul
 
 def main():
-  soul = CorpusSoul('target_user')
-  pickle.dump(soul, open("target_user.soul", "w"))
+  try:
+    soul = SoulWriter.load(open("target_user.soul", "r"))
+  except Exception,e:
+    traceback.print_exc()
+    print "No soul file found. Regenerating."
+    soul = CorpusSoul('target_user')
+    SoulWriter.write(soul, open("target_user.soul", "w"))
+
 
   while True:
     query = raw_input("> ")

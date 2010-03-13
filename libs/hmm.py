@@ -80,6 +80,10 @@ from nltk.util import LazyMap, LazyConcatenation, LazyZip
 
 from nltk.tag.api import *
 
+# XXX: Hack to dodge the unpicklable lambda functions
+def self_transform(symbols):
+  return symbols
+
 # _NINF = float('-inf')  # won't work on Windows
 _NINF = float('-1e300')
 
@@ -132,13 +136,14 @@ class HiddenMarkovModelTagger(TaggerI):
         self._outputs = outputs
         self._priors = priors
         self._cache = None
-        
-        self._transform = kwargs.get('transform', IdentityTransform())
-        if isinstance(self._transform, types.FunctionType):
-            self._transform = LambdaTransform(self._transform)
-        elif not isinstance(self._transform, 
-                            HiddenMarkovModelTaggerTransformI):
-            raise
+
+        # XXX: This lambda function stuff makes us not picklable
+        #self._transform = kwargs.get('transform', IdentityTransform())
+        #if isinstance(self._transform, types.FunctionType):
+        #    self._transform = LambdaTransform(self._transform)
+        #elif not isinstance(self._transform, 
+        #                    HiddenMarkovModelTaggerTransformI):
+        #    raise
             
     @classmethod
     def _train(cls, labeled_sequence, test_sequence=None,
@@ -223,7 +228,7 @@ class HiddenMarkovModelTagger(TaggerI):
             property, and optionally the TAG property
         @type sequence:  Token
         """
-        return 2**(self.log_probability(self._transform.transform(sequence)))
+        return 2**(self.log_probability(self_transform(sequence)))
 
     def log_probability(self, sequence):
         """
@@ -238,7 +243,7 @@ class HiddenMarkovModelTagger(TaggerI):
             property, and optionally the TAG property
         @type sequence:  Token
         """
-        sequence = self._transform.transform(sequence)
+        sequence = self_transform(sequence)
         
         T = len(sequence)
         N = len(self._states)
@@ -268,7 +273,7 @@ class HiddenMarkovModelTagger(TaggerI):
         @param unlabeled_sequence: the sequence of unlabeled symbols 
         @type unlabeled_sequence: list
         """
-        unlabeled_sequence = self._transform.transform(unlabeled_sequence)
+        unlabeled_sequence = self_transform(unlabeled_sequence)
         return self._tag(unlabeled_sequence)
     
     def _tag(self, unlabeled_sequence):
@@ -362,7 +367,7 @@ class HiddenMarkovModelTagger(TaggerI):
         @param unlabeled_sequence: the sequence of unlabeled symbols 
         @type unlabeled_sequence: list
         """
-        unlabeled_sequence = self._transform.transform(unlabeled_sequence)
+        unlabeled_sequence = self_transform(unlabeled_sequence)
         return self._best_path(unlabeled_sequence)
 
     def _best_path(self, unlabeled_sequence):
@@ -405,7 +410,7 @@ class HiddenMarkovModelTagger(TaggerI):
         @param unlabeled_sequence: the sequence of unlabeled symbols 
         @type unlabeled_sequence: list
         """
-        unlabeled_sequence = self._transform.transform(unlabeled_sequence)
+        unlabeled_sequence = self_transform(unlabeled_sequence)
         return self._best_path_simple(unlabeled_sequence)
     
     def _best_path_simple(self, unlabeled_sequence):
@@ -532,7 +537,7 @@ class HiddenMarkovModelTagger(TaggerI):
         sequences, constrained to include the given state(s) at some point in
         time.
         """
-        unlabeled_sequence = self._transform.transform(unlabeled_sequence)
+        unlabeled_sequence = self_transform(unlabeled_sequence)
 
         T = len(unlabeled_sequence)
         N = len(self._states)
@@ -576,7 +581,7 @@ class HiddenMarkovModelTagger(TaggerI):
         Returns the pointwise entropy over the possible states at each
         position in the chain, given the observation sequence.
         """
-        unlabeled_sequence = self._transform.transform(unlabeled_sequence)
+        unlabeled_sequence = self_transform(unlabeled_sequence)
 
         T = len(unlabeled_sequence)
         N = len(self._states)
@@ -597,7 +602,7 @@ class HiddenMarkovModelTagger(TaggerI):
         return entropies
 
     def _exhaustive_entropy(self, unlabeled_sequence):
-        unlabeled_sequence = self._transform.transform(unlabeled_sequence)
+        unlabeled_sequence = self_transform(unlabeled_sequence)
         
         T = len(unlabeled_sequence)
         N = len(self._states)
@@ -636,7 +641,7 @@ class HiddenMarkovModelTagger(TaggerI):
         return entropy
 
     def _exhaustive_point_entropy(self, unlabeled_sequence):
-        unlabeled_sequence = self._transform.transform(unlabeled_sequence)
+        unlabeled_sequence = self_transform(unlabeled_sequence)
         
         T = len(unlabeled_sequence)
         N = len(self._states)
@@ -756,7 +761,7 @@ class HiddenMarkovModelTagger(TaggerI):
         def tags(sent):
             return [tag for (word, tag) in sent]
         
-        test_sequence = LazyMap(self._transform.transform, test_sequence)
+        test_sequence = LazyMap(self_transform, test_sequence)
         predicted_sequence = LazyMap(self._tag, LazyMap(words, test_sequence))
             
         if kwargs.get('verbose', False):
