@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+# Corpus harvester: Used for gathering promising corpuses to resurrect.
+#
 # Uses: http://pypi.python.org/pypi/twitter/1.2.1
 #
 # This script should be rewritten, its pretty fucking clunky.
