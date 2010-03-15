@@ -34,8 +34,6 @@ import libs.AGFL
 # We could translate the AGFL tags to nltk tags, and then
 # fall back to nltk when AGFL fails.
 
-# XXX: Consider temporarily stripping out stuff we left in (esp for AGFL)
-# ["#", "*", "@", "/"], and urls -> "Noun"
 
 toker = libs.treebank.TreebankWordTokenizer()
 def word_tokenize(text):
@@ -44,13 +42,39 @@ def word_tokenize(text):
 def word_detokenize(tokens):
   return toker.detokenize(tokens)
 
+# Temporarily strip out stuff we left in (esp for AGFL)
+# ["#", "*", "@", "/"]
+def agfl_fix(tokens, nltk_tags):
+  fixed = False
+  for t in xrange(len(nltk_tags)):
+    tokens[t] = re.sub(r"\.\.[\.]+", "...", tokens[t])
+    if nltk_tags[t][0] == "'s":
+      if nltk_tags[t][1] == "VBZ":
+        tokens[t] = "is"
+      elif nltk_tags[t][1] == "POS": # XXX: Evil Hack.
+        tokens[t-1] += "s"
+        nltk_tags[t-1] = (nltk_tags[t-1][0]+"s", nltk_tags[t-1][1])
+        fixed = True
+  if fixed:
+    nltk_tags.remove(("'s", "POS"))
+    tokens.remove("'s")
+
+# XXX: Need nltk<->agfl map
+def agfl_repair(tokens, nltk_tags):
+  pass
+
 agfl = libs.AGFL.AGFLWrapper()
 def pos_tag(tokens):
   if agfl.agfl_ok():
+    nltk_tags = nltk.pos_tag(tokens)
+    agfl_fix(tokens, nltk_tags)
     detoked = word_detokenize(tokens)
     sentences = nltk.sent_tokenize(detoked)
     all_tags = []
     for s in sentences:
+      if not s:
+        print "Empty string for: "+str(tokens)
+        continue
       print "Parsing: |"+s+"|"
       agfl_tree = agfl.parse_sentence(s)
       if not agfl_tree:
@@ -63,6 +87,7 @@ def pos_tag(tokens):
         else:
           print "Tag fail for |"+s+"|"
           return None
+    agfl_repair(tokens, nltk_tags)
     return all_tags
   else:
     print "AGFL not ok!"
@@ -280,19 +305,26 @@ class TokenNormalizer:
     i = 0
     while i < tok_len-1:
       # XXX: Should we skip urls? or do something more clever..
-      if tokens[i] in self.skip_tokens: #or "://" in tokens[i]:
+      if tokens[i] in self.skip_tokens or "://" in tokens[i]:
         i += 1
         continue
       new_toks = self._normalize(tokens[i], tokens[i+1])
       i += len(new_toks)
       ret_tokens.extend(new_toks)
     if i < tok_len:
-      if tokens[i] in self.skip_tokens: # or "://" in tokens[i]:
+      if tokens[i] in self.skip_tokens or "://" in tokens[i]:
         i += 1
       else: ret_tokens.extend(self._normalize(tokens[i], ""))
-    # Add .
-    if ret_tokens and not curses.ascii.ispunct(ret_tokens[-1][-1]):
-      ret_tokens.append(".")
+
+    if ret_tokens:
+      # XXX: Trailing :'s are an artifact of stripping urls.
+      if ret_tokens[-1] == ":":
+        ret_tokens = ret_tokens[0:-1]
+      elif ret_tokens[-1][-1] == ":":
+        ret_tokens[-1] = ret_tokens[-1][0:-1]
+      # Add .
+      if not curses.ascii.ispunct(ret_tokens[-1][-1]):
+        ret_tokens.append(".")
     return ret_tokens
 
   def denormalize_tokens(self, tokens):
@@ -441,7 +473,7 @@ class CorpusSoul:
           for jtweet in fl.readlines():
             tweet = json.loads(jtweet)
             txt = tweet['text'].encode('ascii', 'ignore')
-            if re.search("( |^)RT ", txt, re.IGNORECASE): continue
+            if re.search("( |^)RT(:| )", txt, re.IGNORECASE): continue
             if txt[0] == '@': txt = re.sub('^@[\S]+ ', '', txt)
             tagged_tweet = pos_tag(self.normalizer.normalize_tokens(word_tokenize(txt)))
             if tagged_tweet: tagged_tweets.append(tagged_tweet)

@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Natural Language Toolkit: Tokenizers
 #
 # Copyright (C) 2001-2010 NLTK Project
@@ -10,7 +11,7 @@ A regular-expression based word tokenizer that tokenizes sentences
 using the conventions used by the Penn Treebank.
 """
 
-import curses
+import curses.ascii
 import re
 from nltk.tokenize.api import *
 
@@ -76,13 +77,16 @@ class TreebankWordTokenizer(TokenizerI):
             text = regexp.sub(r'\1 \2 \3', text)
 
         # Separate most punctuation. XXX: Hrmm.. hash tags...
-        text = re.sub(r"([^\w\.\'\-\/,&\:\*\@\#])", r' \1 ', text)
+        text = re.sub(r"([^\w\.\-\'\/,\:\*\@\#])", r' \1 ', text)
 
         # Separate :'s if they are not followed by // (urls)
         text = re.sub(r'(\:)([^\/][^\/])', r' \1 \2 ', text)
 
         # Separate periods into consecutive groups
-        text = re.sub(r'([\.]+[\s$])', r' \1 ', text)
+        text = re.sub(r'([\.]+(?:[\s]|$))', r' \1 ', text)
+
+        # Separate - if they have non-alphas between them
+        text = re.sub(r'(\W)-(\W)', r'\1 - \2', text)
 
         # Separate commas if they're followed by space.
         # (E.g., don't separate 2,500)
@@ -93,19 +97,30 @@ class TreebankWordTokenizer(TokenizerI):
 
         return text.split()
 
-    SNUGGLE_PUNCTS = set([ "$", "#", "@" ])
-    NONSNUGGLE_PUNCTS = set([ "&", "-", "+" ]) # could also be suprsnuggle...
+    PREFIX_PUNCTS = set([ "$", "#", "@", "-" ])
+    INFIX_PUNCTS = set([ "&", "+" ]) # could also be suprsnuggle...
 
-    # XXX: Still having problems with NONSNUGGLE's
-    def detokenize(self, tokens):
+    def detokenize(self, orig_tokens):
+        tokens = []
+        for t in orig_tokens: tokens.extend(t.split())
+
         tok_len = len(tokens)
         i = 0
         text = ""
         while i < tok_len-1:
+            # Join up times
+            if i < tok_len-2 and \
+              (re.match("[\d]\+:\+[\d]",
+                  tokens[i]+"+"+tokens[i+1]+"+"+tokens[i+2]) or\
+                 tokens[i+1] in self.INFIX_PUNCTS or \
+               re.match("[\w]\+-\+[\w]",
+                  tokens[i]+"+"+tokens[i+1]+"+"+tokens[i+2])):
+                text += tokens[i]+tokens[i+1]+tokens[i+2]
+                i+=3
             # FIXME: Super ghetto, but not critical path and I'm lazy.
-            if len(self.tokenize(tokens[i]+tokens[i+1])) == 2 and \
-                tokens[i+1] not in self.SNUGGLE_PUNCTS and \
-                tokens[i+1] not in self.NONSNUGGLE_PUNCTS:
+            elif len(self.tokenize(tokens[i]))+len(self.tokenize(tokens[i+1])) == 2 and\
+                 len(self.tokenize(tokens[i]+tokens[i+1])) >= 2 and \
+                tokens[i+1] not in self.PREFIX_PUNCTS:
                 text += tokens[i]+tokens[i+1]
                 i+=2
             else:
@@ -115,7 +130,7 @@ class TreebankWordTokenizer(TokenizerI):
               ispunct = True
               for c in xrange(len(tokens[i])):
                 if not curses.ascii.ispunct(tokens[i][c]) or \
-                   tokens[i] in self.SNUGGLE_PUNCTS:
+                   tokens[i] in self.PREFIX_PUNCTS:
                   ispunct = False
               if ispunct:
                 text += tokens[i]+" "
@@ -125,3 +140,14 @@ class TreebankWordTokenizer(TokenizerI):
 
         if i < tok_len: text += tokens[i]
         return text
+
+
+def main():
+  tok = TreebankWordTokenizer()
+  print tok.tokenize("Hi a-ok gmoney.")
+  print tok.detokenize(["25%", "predict", "a lot", "of", "G-Unit", "45%", "fashion"])
+  print tok.detokenize(tok.tokenize("I&u are teh best @ 7:30 pm 1:30. a-hi"))
+
+
+if __name__ == "__main__":
+  main()

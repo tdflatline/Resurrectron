@@ -4,6 +4,7 @@ import time
 import subprocess
 #from AsyncPopen import Popen
 from subprocess import Popen
+import re
 
 class EP4irParseTree:
   upenn_map = { "NOUN(sing)":"NN" }
@@ -56,6 +57,7 @@ class EP4irParseTree:
          leaves.extend(self._gather_leaves(tree[br]))
     return leaves
 
+  # XXX: price? PRIC?
   def pos_tag(self):
     tags = []
     for l in self.leaves:
@@ -66,10 +68,23 @@ class EP4irParseTree:
       if not word:
         return None # XXX: this happens.
 
+      # XXX: AGFL sucks at labeling #'s
+      if word.isdigit():
+        tag = "NUMB(dig)"
+
       if not tag and word[0] == "-":
         # punctuation
         tag = word
-        word = word[1:]
+        if word[-1] == "-":
+          word = word[1:-1]
+        else:
+          word = word[1:]
+
+      # XXX: Also ADJET(TEXT), ADVBT(TEXT,ADVT), PREPOST(TEXT,PREP),
+      # PAIRDET(TEXT)?
+      if tag.startswith("VERB"):
+        tag = re.sub(r"^(VERB[A-Z]\()[^,]+", r"\1NONE", tag)
+
       tags.append((word, tag))
     return tags
 
@@ -80,7 +95,7 @@ class AGFLWrapper:
   # XXX: Better errro handling for pipe failure
   def __init__(self):
     # agfl-run -T 1 -B -b ep4ir
-    self.p = Popen("agfl-run -v totals -H -T 1 -B -b ./libs/agfl_ep4/ep4ir", shell=True,
+    self.p = Popen("agfl-run -v totals -H -T 2 -B -b ./libs/agfl_ep4/ep4ir", shell=True,
               bufsize=0, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
               stderr=subprocess.STDOUT, close_fds=True)
 
