@@ -59,9 +59,53 @@ def agfl_fix(tokens, nltk_tags):
     nltk_tags.remove(("'s", "POS"))
     tokens.remove("'s")
 
-# XXX: Need nltk<->agfl map
-def agfl_repair(tokens, nltk_tags):
-  pass
+nltk_ep4_map = {
+  "NN" : "NOUN(sing)", # noun, common, singular or mass
+  "NNP" : "NOUN(sing)", # noun, proper, singular
+  "NNPS" : "NOUN(plur)", # noun, proper, plural
+  "NNS" : "NOUN(plur)", # noun, common, plural
+  "RB" : "ADVB(modf)", # adverb
+  "RBR" : "ADVB(comp)", # adverb, comparative
+  "RBS" : "ADVB(supl)", # adverb, superlative
+  "RP" : "PARTICLE(none)", # particle
+  "JJ" : "ADJE(abso)", # adjective or numeral, ordinal 
+  "JJR" : "ADJE(comp)", # adjective, comparative
+  "JJS" : "ADJE(supl)", # adjective, superlative
+  "CC" : "CON(coo)", # conjunction, coordinating
+  "IN" : "CON(sub)", # preposition or conjunction, subordinating
+  "UH" : "INTERJ", # interjection
+  "CD" : "NUM(card)", # numeral, cardinal
+  "." : "-.",
+  # XXX: These need some review
+  "VB" : "VERBI(NONE,none,cplx)", # verb, base form
+  "VBD" : "VERBP(NONE,none,cplx)", # verb, past tense
+  "VBG" : "VERBG(NONE,none,cplx)", # verb, present participle or gerund
+  "VBN" : "VERBP(NONE,none,trav)", # verb, past participle
+  "VBP" : "VERBV(NONE,none,cplx)", # verb, present tense, not 3rd person singular
+  "VBZ" : "VERBS(None,none,cplx)",# verb, present tense, 3rd person singular
+  "PRP" : "PERSPRON(nltk,nltk,nltk)", # pronoun, personal
+  "PRP$" : "POSSPRON", # pronoun, possessive
+}
+
+def agfl_repair(agfl_tags, nltk_tags):
+  # This is somewhat hackish
+  for a in xrange(len(agfl_tags)):
+    if not agfl_tags[a][1] or agfl_tags[a][1] == "WORD" or \
+          agfl_tags[a][1].isspace():
+      closest = -1
+      for n in xrange(len(nltk_tags)):
+        if agfl_tags[a][0] == nltk_tags[n][0]:
+          if closest > 0:
+            print "Two tags found for "+agfl_tags[a][0]
+            if abs(a-n) > abs(a-closest):
+              continue # Farther away. Skip
+          closest = n
+          if nltk_tags[n][1] in nltk_ep4_map:
+            agfl_tags[a] = (nltk_tags[n][0], nltk_ep4_map[nltk_tags[n][1]])
+          else:
+            print nltk_tags[n][1]+" not in nltk map!"
+            agfl_tags[a] = (nltk_tags[n][0], nltk_tags[n][1])
+          found = n
 
 agfl = libs.AGFL.AGFLWrapper()
 def pos_tag(tokens):
@@ -87,12 +131,11 @@ def pos_tag(tokens):
         else:
           print "Tag fail for |"+s+"|"
           return None
-    agfl_repair(tokens, nltk_tags)
+    agfl_repair(all_tags, nltk_tags)
     return all_tags
   else:
-    print "AGFL not ok!"
-  return None
-  #return nltk.pos_tag(tokens)
+    print "AGFL not ok!" # XXX: Kill this log
+    return nltk.pos_tag(tokens)
 
 # Stages:
 # 1. nltk tokenize
