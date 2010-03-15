@@ -48,13 +48,22 @@ agfl = libs.AGFL.AGFLWrapper()
 def pos_tag(tokens):
   if agfl.agfl_ok():
     detoked = word_detokenize(tokens)
-    agfl_tree = agfl.parse_sentence(detoked)
-    if not agfl_tree:
-      print "Parse fail for |"+detoked+"|"
-    else:
-      tags = agfl_tree.pos_tag()
-      if tags: return tags
-      else: print "Tag fail for |"+detoked+"|"
+    sentences = nltk.sent_tokenize(detoked)
+    all_tags = []
+    for s in sentences:
+      print "Parsing: |"+s+"|"
+      agfl_tree = agfl.parse_sentence(s)
+      if not agfl_tree:
+        print "Parse fail for |"+s+"|"
+        return None # XXX: Hrmm. use partials?
+      else:
+        tags = agfl_tree.pos_tag()
+        if tags:
+          all_tags.extend(tags)
+        else:
+          print "Tag fail for |"+s+"|"
+          return None
+    return all_tags
   else:
     print "AGFL not ok!"
   return None
