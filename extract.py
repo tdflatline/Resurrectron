@@ -19,6 +19,7 @@ import traceback
 
 import libs.hmm
 import libs.treebank
+import libs.AGFL
 
 # TODO: Use agfl for pos_tag. nltk.pos_tag kind of sucks
 # Agfl sucks too, but in a different way. It's better
@@ -35,8 +36,6 @@ import libs.treebank
 
 # XXX: Consider temporarily stripping out stuff we left in (esp for AGFL)
 # ["#", "*", "@", "/"], and urls -> "Noun"
-def pos_tag(tokens):
-  return nltk.pos_tag(tokens)
 
 toker = libs.treebank.TreebankWordTokenizer()
 def word_tokenize(text):
@@ -45,6 +44,21 @@ def word_tokenize(text):
 def word_detokenize(tokens):
   return toker.detokenize(tokens)
 
+agfl = libs.AGFL.AGFLWrapper()
+def pos_tag(tokens):
+  if agfl.agfl_ok():
+    detoked = word_detokenize(tokens)
+    agfl_tree = agfl.parse_sentence(detoked)
+    if not agfl_tree:
+      print "Parse fail for |"+detoked+"|"
+    else:
+      tags = agfl_tree.pos_tag()
+      if tags: return tags
+      else: print "Tag fail for |"+detoked+"|"
+  else:
+    print "AGFL not ok!"
+  return None
+  #return nltk.pos_tag(tokens)
 
 # Stages:
 # 1. nltk tokenize
