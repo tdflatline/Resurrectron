@@ -2,7 +2,8 @@
 
 import time
 import subprocess
-from AsyncPopen import Popen
+#from AsyncPopen import Popen
+from subprocess import Popen
 
 class EP4irParseTree:
   upenn_map = { "NOUN(sing)":"NN" }
@@ -88,16 +89,14 @@ class AGFLWrapper:
 
   # AGFL only correctly handles a sentence at a time.
   def parse_sentence(self, sentence, ParseTree=EP4irParseTree):
+    if not sentence.endswith("\n"): sentence += "\n"
     if self.p.poll() != None: return None
-    if not sentence.endswith("\n"):
-      sentence += "\n"
-    self.p.send(sentence)
+    self.p.stdin.write(sentence)
     result = ""
     result_part = ""
     while not result_part or "# parsings" not in result:
-      # XXX: recv is slow.. we can maybe use readline()
       if self.p.poll() != None: return None
-      result_part = self.p.recv()
+      result_part = self.p.stdout.readline()
       if result_part: result += result_part
     ret = result.split("\n")
     #print ret
