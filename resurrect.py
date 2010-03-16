@@ -9,17 +9,24 @@ except: pass
 
 import nltk
 import re
-import pickle
+import cPickle as pickle
 import random
 import math
 import numpy
 import curses.ascii
+import threading
+import time
+import traceback
 #import twitter
 
+from libs.tokenizer import word_tokenize, word_detokenize
+from libs.SpeechModels import PhraseGenerator
+from extract import CorpusSoul
 
 # Maybe pos-tag isn't that important for searching. It seems
 # to make some things harder... We probably should strip tenses from
 # verbs, at least
+# XXX: Unused
 class POSTrim:
    def __init__(self):
     self.pos_map = { "VBD":"VB", "VBG":"VB", "VBN":"VB", "VBP":"VB", "VBZ":"VB",
@@ -43,49 +50,58 @@ class POSTrim:
 # WP$: WH-pronoun, possessive (whose)
 # WRB: Wh-adverb (how, why)
 class QueryStripper:
- pass
+  kill_pos = set(["RP", "CC", "MD", "PDT", "POS", "TO", "WDT", "WP", "WP$",
+                  "WRB"])
+  @classmethod
+  def strip_tagged_query(cls, tagged_query):
+    ret = []
+    for t in tagged_query:
+      if t[1] not in cls.kill_pos:
+        ret.append(t)
+    return ret
 
 #  - Subsitute @msgs: I/Me->You, Mine->Yours, My->Your
 class PronounInverter:
-  def __init__(self):
-    self.pronoun_21_map = { "you":"i", "yours":"mine","your":"my" }
-    self.pronoun_12_map = { "i":"you", "me":"you", "mine":"yours","my":"your" }
+  pronoun_21_map = { "you":"i", "yours":"mine","your":"my" }
+  pronoun_12_map = { "i":"you", "me":"you", "mine":"yours","my":"your" }
 
   # XXX: use (?i) instead of this casehack nonsense
-  def make_2nd_person(self, string):
-    for i in self.pronoun_12_map.iterkeys():
+  @classmethod
+  def make_2nd_person(cls, string):
+    for i in cls.pronoun_12_map.iterkeys():
       chars = list(i)
       casehack = ""
       for c in chars: casehack += "["+c.lower()+c.upper()+"]"
       string = re.sub("([^a-zA-Z]|^)"+casehack+"([^a-zA-Z]|$)",
-                      "\\1"+self.pronoun_12_map[i]+"\\2", string)
+                      "\\1"+cls.pronoun_12_map[i]+"\\2", string)
     return string
 
-  def make_1st_person(self, string):
-    for i in self.pronoun_21_map.iterkeys():
+  @classmethod
+  def make_1st_person(cls, string):
+    for i in cls.pronoun_21_map.iterkeys():
       chars = list(i)
       casehack = ""
       for c in chars: casehack += "["+c.lower()+c.upper()+"]"
       string = re.sub("([^a-zA-Z]|^)"+casehack+"([^a-zA-Z]|$)",
-                      "\\1"+self.pronoun_21_map[i]+"\\2", string)
+                      "\\1"+cls.pronoun_21_map[i]+"\\2", string)
     return string
 
-  def invert_all(self, string):
+  @classmethod
+  def invert_all(cls, string):
     split_string = string.split()
     new_string = []
     for s in split_string:
-      snew = self.make_1st_person(s)
+      snew = cls.make_1st_person(s)
       if snew == s:
-        snew = self.make_2nd_person(s)
+        snew = cls.make_2nd_person(s)
       new_string.append(snew)
     return " ".join(new_string)
 
 
+
 # FIXME: Should these be static classes? Some maybe should
 # do some record keeping on what they modify for inversion..
-postrim = POSTrim()
 porter = nltk.PorterStemmer()
-proverter = PronounInverter()
 
 #- Notion of "pronoun context" per person
 #  - Store list of recent nouns+verbs used in queries/responses
@@ -122,20 +138,9 @@ class FourSquareData:
 class URLClassifier:
   pass
 
-class TagBin:
-  def __init__(self, text, tags):
-    # XXX: Denormalize to get orig text?
-    # XXX: Normalize tags?
-    self.tags = tags
-    self.orig_text = text
-    self.tagged_tokens = [nltk.tag.util.tuple2str((porter.stem(t[0]).lower(),
-                            postrim.trim(t[1]))) for t in self.tags]
-    self.vocab = set(self.tagged_tokens)
-
-# XXX: Remove all tags
-class SearchableText(TagBin):
-  skip_tokens = set(['"','(',')','[',']'])
-  def __init__(self, text, hidden_text=""):
+class SearchableText:
+  skip_tokens = set(['"','(',')','[',']']) # XXX: use?
+  def __init__(self, text, tokens=None, tagged_tokens=None, strip=False, hidden_text=""):
     if hidden_text:
       hidden_text = hidden_text.rstrip()
       if not curses.ascii.ispunct(hidden_text[-1]):
@@ -146,16 +151,26 @@ class SearchableText(TagBin):
 
     if not curses.ascii.ispunct(text[-1]): text += "."
 
-    # Hidden text will ruin our markov model. Need to avoid it for training
-    tokens = []
-    for w in nltk.word_tokenize(hidden_text+text):
-      if w: tokens.append(w)
-    if not tokens: print "Empty text!"
-    tags = nltk.pos_tag(tokens)
-    TagBin.__init__(self, text, tags)
+    self.tagged_tokens = tagged_tokens
+    if tokens: self.tokens = tokens
+    else: self.tokens = word_tokenize(text)
+    self.text = text
+
+    if hidden_text:
+      self.tokens.extend(word_tokenize(hidden_text))
+
+    # Include hidden text in search tokens
+    pos_tags = nltk.pos_tag(self.tokens)
+
+    if strip:
+      self.search_tokens = [porter.stem(t[0]).lower() for t in
+                            QueryStripper.strip_tagged_query(pos_tags)]
+    else:
+      self.search_tokens = [porter.stem(t[0]).lower() for t in pos_tags]
+    self.vocab = set(self.search_tokens)
 
   def count(self, word):
-    return self.tagged_tokens.count(word)
+    return self.search_tokens.count(word)
 
 
 # Search:
@@ -170,7 +185,7 @@ class SearchableText(TagBin):
 # Then if tags and words match, you get more score than just tags,
 # but its not total fail if your question can't be parsed..
 class SearchableTextCollection:
-  def __init__(self, texts=None):
+  def __init__(self, texts=[]):
     self._idf_cache = {}
     self.texts = texts
     if texts:
@@ -181,6 +196,15 @@ class SearchableTextCollection:
     self.texts.append(text)
     self.needs_update = True
     if update: self.update_matrix()
+
+  def remove_text(self, text, update=False):
+    try:
+      self.texts.remove(text)
+      self.needs_update = True
+      if update: self.update_matrix()
+    except ValueError,e:
+      print "Item not in list: "+text.text
+      return
 
   def update_matrix(self):
     print "Building Terms..."
@@ -206,14 +230,12 @@ class SearchableTextCollection:
     if self.needs_update: self.update_matrix()
     print "Building Qvector.."
 
-    query_string = proverter.invert_all(query_string)
+    query_string = PronounInverter.invert_all(query_string)
     print "Inverted Query: "+query_string
-    query_text = SearchableText(query_string)
+    query_text = SearchableText(query_string, strip=True)
 
-    # XXX: Def strip off WH*, DT* TO* w/ a querystripper
-    # XXX: Hrmm, could amplify nouns and dampen adjectives and verbs..
-    # How though? Normalize to 0.75*(max_noun/max_word)
-    # Insert a You/NN in all queries?
+    # XXX: Hrmm, could amplify nouns and dampen adjectives and verbs:
+    # Normalize to 0.75*(max_noun/max_word)
     # FIXME: If no nouns, only pronouns, use state from queries+responses
     q = []
     for dt in self.vocab:
@@ -275,7 +297,7 @@ class SearchableTextCollection:
 
   def tf(self, term, text):
     """ The frequency of the term in text. """
-    return float(text.count(term)) / len(text.tagged_tokens)
+    return float(text.count(term)) / len(text.search_tokens)
 
   def idf(self, term):
     """ The number of texts in the corpus divided by the
@@ -295,29 +317,142 @@ class SearchableTextCollection:
   def tf_idf(self, term, text):
     return self.tf(term, text) * self.idf(term)
 
-# Mutate:
-#  1. For each noun, adj and verb not in query:
-#     random choice:
-#       A. nltk.text.Text.similar(w) from corups
-#          Replace with tf-idf weighted word
-#       C. tf-idf score wordnet synonym set, choose based on that
-#       B. tf-idf score: http://labs.google.com/sets
-class PhraseMutator:
-  pass
+# The brain holds the already tweeted list and the list of pending tweets
+# as a SearchableTextCollection.
+#
+# It also manages a separate worker thread for generating more pending tweets.
+class TwitterBrain:
+  def __init__(self, soul, pending_tweets=1000):
+    self.pending_goal = pending_tweets
+    self.pending_tweets = SearchableTextCollection()
+    self.already_tweeted = []
+    self.remove_tweets = []
+    for t in soul.tagged_tweets:
+      words = map(lambda x: x[0], t)
+      self.already_tweeted.append(set(words))
+    self.restart(soul)
+
+  def restart(self, soul, pending_tweets=1000):
+    self.pending_goal = pending_tweets
+    self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
+
+    self.work_lock = threading.Lock()
+    self._shutdown = False
+    self._thread = threading.Thread(target=self.__phrase_worker)
+    self._thread.start()
+
+  def get_tweet(self, query=None):
+    self.work_lock.acquire()
+    if not query:
+      ret = random.choice(self.pending_tweets.texts)
+    else:
+      ret = self.pending_tweets.query(query)
+    self.remove_tweets.append(ret)
+    self.already_tweeted.append(set(ret.tokens))
+    self.work_lock.release()
+    return (ret.text, ret.tokens, ret.tagged_tokens)
+
+  def __did_already_tweet(self, words, max_score=0.75):
+    for t in self.already_tweeted:
+      score = float(len(t & words))
+      score1 = score/len(t)
+      score2 = score/len(words)
+      if score1 > max_score or score2 > max_score:
+        #print "Too similar to old tweet.. skipping: "+\
+        #         str(score1)+"/"+str(score2)
+        return True
+    return False
+
+  def __phrase_worker(self):
+    try:
+      self.__phrase_worker2()
+    except:
+      print "Worker thread died."
+      traceback.print_exc()
+    print "Worker thread quit."
+
+  def __phrase_worker2(self):
+    first_run = True
+    while not self._shutdown:
+      added_tweets = False
+      if len(self.remove_tweets) > 0:
+        self.work_lock.acquire()
+        while len(self.remove_tweets) > 0:
+          self.pending_tweets.remove_text(self.remove_tweets.pop())
+        self.pending_tweets.update_matrix()
+        self.work_lock.release()
+
+      while len(self.pending_tweets.texts) < self.pending_goal:
+        (tweet,tokens,tagged_tokens) = self.voice.say_something()
+        if len(tweet) > 140: continue
+
+        self.work_lock.acquire()
+
+        if self.__did_already_tweet(set(tokens)):
+          self.work_lock.release()
+          continue
+
+        self.pending_tweets.add_text(SearchableText(tweet,tokens,tagged_tokens),
+                           update=(not first_run))
+        added_tweets = True
+        self.work_lock.release()
+
+        if len(self.pending_tweets.texts) % 100 == 0:
+          # XXX: Cleanup filename
+          print "At tweet count "+str(len(self.pending_tweets.texts))+\
+                  "/"+str(self.pending_goal)
+          BrainReader.write(self, open("target_user.brain", "w"))
+      if added_tweets:
+        print "At full tweet count of: "+str(self.pending_goal)
+        # XXX: Cleanup filename
+        BrainReader.write(self, open("target_user.brain", "w"))
+      first_run=False
+      time.sleep(5)
+
+# Lousy hmm can't be pickled
+class BrainReader:
+  @classmethod
+  def write(cls, brain, f):
+    (voice,thread,lock) = (brain.voice,brain._thread,brain.work_lock)
+    lock.acquire()
+    (brain.voice,brain._thread,brain.work_lock) = (None,None,None)
+    pickle.dump(brain, f)
+    (brain.voice,brain._thread,brain.work_lock) = (voice,thread,lock)
+    lock.release()
+
+  @classmethod
+  def load(cls, f):
+    brain = pickle.load(f)
+    return brain
 
 
 def main():
-  pass
-  #soul = SoulCorpus('target_user')
-  #pickle.dump(soul, open("target_user.soul", "w"))
-  #soul = pickle.load(open("target_user.soul", "r"))
-  #pg = PhraseGenerator(soul)
+  brain = None
+  soul = None
 
-  #pg.test_run()
-  #return
+  try:
+    soul = pickle.load(open("target_user.soul", "r"))
+  except Exception,e:
+    traceback.print_exc()
+    print "No soul file found. Regenerating."
+    soul = CorpusSoul('target_user')
+    pickle.dump(soul, open("target_user.soul", "w"))
+
+  try:
+    brain = BrainReader.load(open("target_user.brain", "r"))
+    brain.restart(soul)
+  except Exception,e:
+    traceback.print_exc()
+    print "No brain file found. Regenerating."
+    brain = TwitterBrain(soul)
+    BrainReader.write(brain, open("target_user.brain", "w"))
 
 
-  #soul.tweet_collection.generate(100)
+  while True:
+    query = raw_input("> ")
+    (str_result, tokens, tagged_tokens) = brain.get_tweet(query)
+    print str_result
+    print str(tagged_tokens)
 
 if __name__ == "__main__":
   main()
