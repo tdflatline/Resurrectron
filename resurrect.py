@@ -32,6 +32,19 @@ class POSTrim:
      else:
        return pos
 
+# RP: particle
+# CC: conjunction, coordinating
+# MD: modal auxiliary
+# PDT: pre-determiner
+# POS: genitive marker
+# TO: "to" as preposition or infinitive marker
+# WDT: WH-determiner (that)
+# WP: WH-pronoun (that)
+# WP$: WH-pronoun, possessive (whose)
+# WRB: Wh-adverb (how, why)
+class QueryStripper:
+ pass
+
 #  - Subsitute @msgs: I/Me->You, Mine->Yours, My->Your
 class PronounInverter:
   def __init__(self):
@@ -119,6 +132,7 @@ class TagBin:
                             postrim.trim(t[1]))) for t in self.tags]
     self.vocab = set(self.tagged_tokens)
 
+# XXX: Remove all tags
 class SearchableText(TagBin):
   skip_tokens = set(['"','(',')','[',']'])
   def __init__(self, text, hidden_text=""):
@@ -196,6 +210,7 @@ class SearchableTextCollection:
     print "Inverted Query: "+query_string
     query_text = SearchableText(query_string)
 
+    # XXX: Def strip off WH*, DT* TO* w/ a querystripper
     # XXX: Hrmm, could amplify nouns and dampen adjectives and verbs..
     # How though? Normalize to 0.75*(max_noun/max_word)
     # Insert a You/NN in all queries?
