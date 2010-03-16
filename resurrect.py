@@ -106,13 +106,14 @@ porter = nltk.PorterStemmer()
 #- Notion of "pronoun context" per person
 #  - Store list of recent nouns+verbs used in queries/responses
 #    - If no specific noun/verb is found, use these for query
-#  - Expire after a while
+#  - associate per @msg user
+#  - Expire after a while. Exponential backoff?
 class ConversationContext:
   pass
 
 #- Knowledge Base:
 #  - Subsitute @msgs: I/Me->You, Mine->Yours, My->Your
-#  - Tag with sender as hidden text, add to list of tweets for searching
+#  - Tag with sender @name as hidden text, add to list of tweets for searching
 class KnowledgeBase:
   pass
 
@@ -228,12 +229,16 @@ class SearchableTextCollection:
 
   def query(self, query_string, randomize=False, only_pos=[]): #only_pos=["FW", "CD", "$", "N.*"]):
     if self.needs_update: self.update_matrix()
-    print "Building Qvector.."
+
+    if not query_string:
+      print "Empty query!"
+      return random.choice(self.texts)
 
     query_string = PronounInverter.invert_all(query_string)
     print "Inverted Query: "+query_string
     query_text = SearchableText(query_string, strip=True)
 
+    print "Building Qvector.."
     # XXX: Hrmm, could amplify nouns and dampen adjectives and verbs:
     # Normalize to 0.75*(max_noun/max_word)
     # FIXME: If no nouns, only pronouns, use state from queries+responses
@@ -322,7 +327,7 @@ class SearchableTextCollection:
 #
 # It also manages a separate worker thread for generating more pending tweets.
 class TwitterBrain:
-  def __init__(self, soul, pending_tweets=1000):
+  def __init__(self, soul, pending_tweets=5000):
     self.pending_goal = pending_tweets
     self.pending_tweets = SearchableTextCollection()
     self.already_tweeted = []
@@ -332,7 +337,7 @@ class TwitterBrain:
       self.already_tweeted.append(set(words))
     self.restart(soul)
 
-  def restart(self, soul, pending_tweets=1000):
+  def restart(self, soul, pending_tweets=5000):
     self.pending_goal = pending_tweets
     self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
 
@@ -342,14 +347,14 @@ class TwitterBrain:
     self._thread.start()
 
   def get_tweet(self, query=None):
-    self.work_lock.acquire()
+    self.__lock()
     if not query:
       ret = random.choice(self.pending_tweets.texts)
     else:
       ret = self.pending_tweets.query(query)
     self.remove_tweets.append(ret)
     self.already_tweeted.append(set(ret.tokens))
-    self.work_lock.release()
+    self.__unlock()
     return (ret.text, ret.tokens, ret.tagged_tokens)
 
   def __did_already_tweet(self, words, max_score=0.75):
@@ -371,43 +376,54 @@ class TwitterBrain:
       traceback.print_exc()
     print "Worker thread quit."
 
+  # Needed to avoid the race condition on pickling..
+  def __lock(self):
+    lock = self.work_lock
+    while not lock:
+      lock = self.work_lock
+      time.sleep(1)
+    lock.acquire()
+
+  def __unlock(self):
+    self.work_lock.release()
+
   def __phrase_worker2(self):
     first_run = True
     while not self._shutdown:
       added_tweets = False
       if len(self.remove_tweets) > 0:
-        self.work_lock.acquire()
+        self.__lock()
         while len(self.remove_tweets) > 0:
           self.pending_tweets.remove_text(self.remove_tweets.pop())
         self.pending_tweets.update_matrix()
-        self.work_lock.release()
+        self.__unlock()
 
       while len(self.pending_tweets.texts) < self.pending_goal:
         (tweet,tokens,tagged_tokens) = self.voice.say_something()
         if len(tweet) > 140: continue
 
-        self.work_lock.acquire()
+        self.__lock()
 
         if self.__did_already_tweet(set(tokens)):
-          self.work_lock.release()
+          self.__unlock()
           continue
 
         self.pending_tweets.add_text(SearchableText(tweet,tokens,tagged_tokens),
                            update=(not first_run))
         added_tweets = True
-        self.work_lock.release()
+        self.__unlock()
 
         if len(self.pending_tweets.texts) % 100 == 0:
           # XXX: Cleanup filename
-          print "At tweet count "+str(len(self.pending_tweets.texts))+\
-                  "/"+str(self.pending_goal)
-          BrainReader.write(self, open("target_user.brain", "w"))
+          break # Perform other work
       if added_tweets:
-        print "At full tweet count of: "+str(self.pending_goal)
+        print "At tweet count "+str(len(self.pending_tweets.texts))+\
+                  "/"+str(self.pending_goal)
         # XXX: Cleanup filename
         BrainReader.write(self, open("target_user.brain", "w"))
-      first_run=False
-      time.sleep(5)
+      if len(self.pending_tweets.texts) == self.pending_goal:
+        first_run=False
+      time.sleep(3)
 
 # Lousy hmm can't be pickled
 class BrainReader:
