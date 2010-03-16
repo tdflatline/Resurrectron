@@ -11,6 +11,7 @@ class EP4irParseTree:
   def __init__(self, parseresult):
     parseresult = parseresult.replace("epos{}", "")
     parseresult = parseresult.replace("spos{}", "")
+    parseresult = parseresult.replace("PRICE{}", "")
     self.tree = self._make_tree(parseresult)
     self.leaves = self._gather_leaves(self.tree)
 
@@ -57,15 +58,18 @@ class EP4irParseTree:
          leaves.extend(self._gather_leaves(tree[br]))
     return leaves
 
-  # XXX: price? PRIC?
   def pos_tag(self):
     tags = []
     for l in self.leaves:
+      # TODO: This is a hack. Wtf is this IT{} leaf?
+      if l == "IT": continue
+
       pos_end = l.find('"')
       tag = l[:pos_end]
       word = l[pos_end+1:l.find('"', pos_end+1)]
 
       if not word:
+        print "Word blank for leaf: "+str(l)
         return None # XXX: this happens.
 
       # XXX: AGFL sucks at labeling #'s
@@ -123,7 +127,7 @@ class AGFLWrapper:
 def main():
   ep4 = EP4irParseTree("line{hi{hi}}line{epos{} bye spos{}}")
   ep = AGFLWrapper()
-  tree = ep.parse_sentence("I love you.")
+  tree = ep.parse_sentence("Am I going to get drunk tonight?")
   print "T: |"+str(tree.tree)+"|"
   print "L: |"+str(tree.leaves)+"|"
   print str(tree.pos_tag())

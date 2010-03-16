@@ -46,12 +46,14 @@ def word_detokenize(tokens):
 # ["#", "*", "@", "/"]
 def agfl_fix(tokens, nltk_tags):
   fixed = False
+  # XXX: Add these to normalizer? Or just invert them after parsing
+  # XXX: Standalone numbers too?
   for t in xrange(len(nltk_tags)):
     tokens[t] = re.sub(r"\.\.[\.]+", "...", tokens[t])
     if nltk_tags[t][0] == "'s":
       if nltk_tags[t][1] == "VBZ":
         tokens[t] = "is"
-      elif nltk_tags[t][1] == "POS": # XXX: Evil Hack.
+      elif nltk_tags[t][1] == "POS": # Evil Hack. XXX: Undo?
         tokens[t-1] += "s"
         nltk_tags[t-1] = (nltk_tags[t-1][0]+"s", nltk_tags[t-1][1])
         fixed = True
@@ -59,11 +61,9 @@ def agfl_fix(tokens, nltk_tags):
     nltk_tags.remove(("'s", "POS"))
     tokens.remove("'s")
 
+# These tend to be pretty solid.
 nltk_ep4_map = {
-  "NN" : "NOUN(sing)", # noun, common, singular or mass
-  "NNP" : "NOUN(sing)", # noun, proper, singular
-  "NNPS" : "NOUN(plur)", # noun, proper, plural
-  "NNS" : "NOUN(plur)", # noun, common, plural
+  "PRP$" : "POSSPRON", # pronoun, possessive
   "RB" : "ADVB(modf)", # adverb
   "RBR" : "ADVB(comp)", # adverb, comparative
   "RBS" : "ADVB(supl)", # adverb, superlative
@@ -75,16 +75,28 @@ nltk_ep4_map = {
   "IN" : "CON(sub)", # preposition or conjunction, subordinating
   "UH" : "INTERJ", # interjection
   "CD" : "NUM(card)", # numeral, cardinal
-  "." : "-.",
-  # XXX: These need some review
+  "." : "-."
+}
+
+# These tags tend not to work very well with NLTK.
+# Leave them (and others) as their NLTK equivs to
+# let the HMM compensate a bit. Left here
+# for reference.
+nltk_ep4_map_junky = {
+  # NLTK is too generous with tagging things as nouns
+  "NN" : "NOUN(sing)", # noun, common, singular or mass
+  "NNP" : "NOUN(sing)", # noun, proper, singular
+  "NNPS" : "NOUN(plur)", # noun, proper, plural
+  "NNS" : "NOUN(plur)", # noun, common, plural
+
+  # These need some review..
   "VB" : "VERBI(NONE,none,cplx)", # verb, base form
   "VBD" : "VERBP(NONE,none,cplx)", # verb, past tense
   "VBG" : "VERBG(NONE,none,cplx)", # verb, present participle or gerund
   "VBN" : "VERBP(NONE,none,trav)", # verb, past participle
   "VBP" : "VERBV(NONE,none,cplx)", # verb, present tense, not 3rd person singular
   "VBZ" : "VERBS(None,none,cplx)",# verb, present tense, 3rd person singular
-  "PRP" : "PERSPRON(nltk,nltk,nltk)", # pronoun, personal
-  "PRP$" : "POSSPRON", # pronoun, possessive
+  "PRP" : "PERSPRON(nltk,nltk,nltk)" # pronoun, personal
 }
 
 def agfl_repair(agfl_tags, nltk_tags):
@@ -105,7 +117,6 @@ def agfl_repair(agfl_tags, nltk_tags):
           else:
             print nltk_tags[n][1]+" not in nltk map!"
             agfl_tags[a] = (nltk_tags[n][0], nltk_tags[n][1])
-          found = n
 
 agfl = libs.AGFL.AGFLWrapper()
 def pos_tag(tokens):
@@ -123,7 +134,7 @@ def pos_tag(tokens):
       agfl_tree = agfl.parse_sentence(s)
       if not agfl_tree:
         print "Parse fail for |"+s+"|"
-        return None # XXX: Hrmm. use partials?
+        return None # Hrmm. use partials? Prob not
       else:
         tags = agfl_tree.pos_tag()
         if tags:
@@ -134,7 +145,7 @@ def pos_tag(tokens):
     agfl_repair(all_tags, nltk_tags)
     return all_tags
   else:
-    print "AGFL not ok!" # XXX: Kill this log
+    print "AGFL not being used" # XXX: Kill this log
     return nltk.pos_tag(tokens)
 
 # Stages:
@@ -347,7 +358,7 @@ class TokenNormalizer:
     tok_len = len(tokens)
     i = 0
     while i < tok_len-1:
-      # XXX: Should we skip urls? or do something more clever..
+      # TODO: Should we skip urls? or do something more clever..
       if tokens[i] in self.skip_tokens or "://" in tokens[i]:
         i += 1
         continue
@@ -360,7 +371,7 @@ class TokenNormalizer:
       else: ret_tokens.extend(self._normalize(tokens[i], ""))
 
     if ret_tokens:
-      # XXX: Trailing :'s are an artifact of stripping urls.
+      # TODO: Trailing :'s are an artifact of stripping urls.
       if ret_tokens[-1] == ":":
         ret_tokens = ret_tokens[0:-1]
       elif ret_tokens[-1][-1] == ":":
@@ -423,7 +434,8 @@ class TokenNormalizer:
 #  2. HMM-4gram (x-x-i-x or x-i-x-x)
 #  3. HMM-5gram (x-x-i-x-x, x-i-x-x-x, x-x-i-x-x, x-x-x-i-x)
 class PhraseGenerator:
-  def __init__(self, tagged_phrases, normalizer=None):
+  def __init__(self, tagged_phrases, normalizer=None, already_tweeted=None):
+    self.already_tweeted=already_tweeted
     self.normalizer = normalizer
     # 41 is the winner so far..
     self.nm_hmm = {}
@@ -485,14 +497,42 @@ class PhraseGenerator:
       except:
         print "Probability failure..."
         traceback.print_exc()
+        return
+
+  def hack_grammar(self, tokens):
+    # "a/an",
+    for i in xrange(len(tokens)-1):
+      if tokens[i] == "a" and tokens[i+1][0] in ["aeuio"]:
+        tokens[i] = "an"
+      elif tokens[i] == "an" and tokens[i+1][0] not in ["aeuio"]:
+        tokens[i] = "a"
 
   def say_something(self, tokens=None):
-    if not tokens: tokens = self._nm_hmm_phrase(self)
+    while True:
+      if not tokens: tokens = self._nm_hmm_phrase()
+      ok = True
+      # Make sets..
+      toks = map(lambda x: x[0], tokens)
+      words = set(toks)
+      # XXX: Make a param for this
+      for t in self.already_tweeted:
+        score = float(len(t & words))
+        score1 = score/len(t)
+        score2 = score/len(words)
+        if score1 > 0.75 or score2 > 0.75:
+          print "Too similar to old tweet.. skipping: "+\
+                   str(score1)+"/"+str(score2)
+          ok = False
+          break
+      if ok: break
+      else: tokens = None
+    self.already_tweeted.append(words)
+    print str(tokens)
+    self.hack_grammar(toks)
     if self.normalizer:
-      return word_detokenize(self.normalizer.denormalize_tokens(
-                       map(lambda x: x[0], tokens)))
+      return word_detokenize(self.normalizer.denormalize_tokens(toks))
     else:
-      return word_detokenize(map(lambda x: x[0], tokens))
+      return word_detokenize(toks)
 
   def test_run(self):
     for mode in map(str, [30, 31, 32, 40, 41, 42, 43]):
@@ -542,12 +582,16 @@ class CorpusSoul:
         elif f.endswith(".4sq"):
           pass
 
-    # Need to compute finals scores for normalzier to be able to denormalize
+    self.already_tweeted = []
     for t in tagged_tweets:
-      self.normalizer.score_tokens(map(lambda x: x[0], t))
+      words = map(lambda x: x[0], t)
+      # Need to compute finals scores for normalzier to be able to denormalize
+      self.normalizer.score_tokens(words)
+      self.already_tweeted.append(set(words))
 
     self.tagged_tweets = tagged_tweets
-    self.voice = PhraseGenerator(tagged_tweets, self.normalizer)
+    self.voice = PhraseGenerator(tagged_tweets, self.normalizer,
+                                 self.already_tweeted)
     #self.tweet_collection = SearchableTextCollection(tweet_texts)
     #self.tweet_collection.generate(100)
 
@@ -566,7 +610,8 @@ class SoulWriter:
   @classmethod
   def load(cls, f):
     soul = pickle.load(f)
-    soul.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
+    soul.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer,
+                                 soul.already_tweeted)
     return soul
 
 def main():
@@ -585,9 +630,10 @@ def main():
     if query.isdigit():
       str_result = "1"*256
       while len(str_result) > 140:
-        result = soul.voice._nm_hmm_phrase(query)
+        #result = soul.voice._nm_hmm_phrase(query)
+        result = None
         str_result = soul.voice.say_something(result)
-      print str(result)
+      #print str(result)
       print str_result
     else:
       result = soul.voice._nm_hmm_phrase()
