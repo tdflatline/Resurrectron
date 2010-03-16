@@ -152,6 +152,8 @@ class SearchableText:
 
     if not curses.ascii.ispunct(text[-1]): text += "."
 
+    # XXX: We should remove the tagged tokens and possibly the tokens
+    # too. This eats a lot of storage.
     self.tagged_tokens = tagged_tokens
     if tokens: self.tokens = tokens
     else: self.tokens = word_tokenize(text)
@@ -327,7 +329,7 @@ class SearchableTextCollection:
 #
 # It also manages a separate worker thread for generating more pending tweets.
 class TwitterBrain:
-  def __init__(self, soul, pending_tweets=5000):
+  def __init__(self, soul, pending_tweets=1500):
     self.pending_goal = pending_tweets
     self.pending_tweets = SearchableTextCollection()
     self.already_tweeted = []
@@ -337,7 +339,7 @@ class TwitterBrain:
       self.already_tweeted.append(set(words))
     self.restart(soul)
 
-  def restart(self, soul, pending_tweets=5000):
+  def restart(self, soul, pending_tweets=1500):
     self.pending_goal = pending_tweets
     self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
 
@@ -416,6 +418,7 @@ class TwitterBrain:
         if len(self.pending_tweets.texts) % 100 == 0:
           # XXX: Cleanup filename
           break # Perform other work
+      # XXX: This process is expensive:
       if added_tweets:
         print "At tweet count "+str(len(self.pending_tweets.texts))+\
                   "/"+str(self.pending_goal)

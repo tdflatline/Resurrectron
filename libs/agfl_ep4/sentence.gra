@@ -1,0 +1,1905 @@
+# $Id: sentence.gra 708 2008-10-07 11:15:49Z olafs $
+
+GRAMMAR sentence.
+
+
+#----------------------SENTENCE PATTERNS-----------------------#
+
+# codes of components:
+#   S  subject
+#   V  verb clause
+#   O  object
+#   C  complement or indirect object
+#   P  predicate
+#   nC no complement
+#   nO no object
+#   o  reduced object(e.g. in relative clauses)
+#   x  copula or 'to be' form
+#  x.v split verb clause, starting with copula or 'to be' form
+#  v.v split verb clause, starting with auxiliary verb
+#   p  participle
+#
+# verb subcategorization is described by a triple
+#      TRAN PART PREP
+# which guides the expression of complements in OC phrase.
+# the PARTicle may occur separated from the verb
+#
+#     intr none            to sneeze
+#     intr for             to go for something
+#     trav none            to see it
+#     trav to              to throw it to someone
+#     ditr to              to give someone it
+#              (to give it to someone = <TRAV TO>)
+#   complx none            to call somebody somepredicate
+#     link none            to seem somepredicate
+
+# Part-Of-Speech types used in transduction
+#        N: noun
+#        A: adjective
+#        V: verb
+#        P: personal pronoun
+#        X: adverb
+
+#-------------------------STATEMENT----------------------------#
+
+ statement:
+  Wopen, statement, Wclose
+/ statement
+;
+  Wsub, statement, Wclose
+/ statement
+;
+    simple statement,
+      ([Wcomma], coordinator(coo|loc|sub), statement;  )
+/ simple statement, ()
+# EX the spirit is willing but the flesh is weak.
+# EX I gave it to you and was pleased by the result
+# EX the apparatus includes a calculator and does not require a tachogenerator
+# EX Scrolling changes the display but does not move the insertion point
+.
+
+ simple statement:
+    SVOC phrase
+/           "{", SVOC phrase, "}"
+# EX this is the story of my life
+.
+
+ SVOC phrase:
+# --- subject first
+  subject(NUMB, PERS), VOC phrase(NUMB, PERS)
+/  subject, ",", VOC phrase
+# EX the vatican has spoken
+# EX IBM has been sponsoring a sequence of software engineering conferences
+# EX he is asking the president for clemency
+;
+  ## impersonal phrase too?
+# --- topicalized circumstances
+  circumstances, [Wcomma], subject(NUMB, PERS), VOC phrase(NUMB, PERS)
+/  subject, ",[", VOC phrase, ",", circumstances, "]"
+# EX this morning, in the train, he made a kind of confession
+# EX unfortunately you're just too late to see him
+# EX to this weakness he gave in easily
+# EX on those trivialities he wasted his whole life
+# EX due to his sickness he died soon
+;
+# --- topicalized adjective
+    attr adjectives, copula(NUMB, PERS), subject(NUMB, PERS)
+      / subject, ",ATTR ", attr adjectives
+;
+# EX large was my surprise when he did turn up
+# EX black and blue is my skin
+# --- topicalized particle
+  particle(XPART), verb group(TRAN, XPART, PREP, NUMB, PERS),
+    subject(NUMB,PERS), OC phrase(TRAN, none, PREP)
+/         subject,  ",SUBJ [", verb group, OC phrase, "]"
+# EX away flew the butterfly, flapping its wings
+# EX off went the queen to her palace
+;
+# --- topicalized pronoun genitive
+   opt circumstances, LEX_GENPRON, copula(NUMB,PERS), subject(NUMB,PERS)
+      /           subject, ",ATTR ", LEX_GENPRON, opt circumstances
+# EX mine is the vengeance
+# EX his was the best result
+;
+# --- topicalized object
+    Wquoteopen(INT), SVOC phrase, Wquoteclose(INT), [Wcomma],
+      subject(NUMB, PERS), verb group(cplx|fincomp, PART, PREP, NUMB, PERS),
+       OC phrase(intr, PART, PREP), BONUS, BONUS
+/         "[", subject, ",SUBJ [", verb group, OC phrase,
+              "|THAT [", SVOC phrase, "]]]"
+# EX "you are right", the king said bravely.
+;
+    Wquoteopen(INT), SVOC phrase, Wquoteclose(INT), [Wcomma],
+      verb group(cplx|fincomp, PART, PREP, NUMB, PERS), subject(NUMB, PERS),
+       OC phrase(intr, PART, PREP), BONUS, BONUS
+/         "[", subject, ",SUBJ [", verb group, OC phrase,
+              "|THAT [", SVOC phrase, "]]]"
+# EX "you are right" said the king bravely.
+;
+# --- topicalized indirect object
+  indirect object(to), copula(NUMB, PERS),
+       participle(ditr, none, to, papl), object, pref agent,
+       opt circumstances
+/           pref agent, ",SUBJ [", participle, object, indirect object,
+              opt circumstances, "]"
+# EX him have been given plenty of black marks by his superiors
+;
+  opt circumstances, indirect object(to), copula(NUMB, PERS),
+       participle(ditr, none, to, papl), pref agent, object,
+       opt circumstances
+/           pref agent, ",SUBJ [", participle, object, indirect object,
+             opt circumstances.1, opt circumstances.2, "]"
+# EX you have been given by your superiors plenty of black marks
+;
+# --- topicalized PP and passive
+       PP(XPREP), copula(NUMB, PERS), participle(trav, none, XPREP, papl),
+           pref agent, subject(NUMB, PERS), opt circumstances
+/               pref agent, ",SUBJ [", participle, ",OBJ ", subject, PP,
+                 opt circumstances, "]"
+;
+# EX to you has been given by him an enormous task
+       PP(XPREP), copula(NUMB, PERS), participle(trav, none, XPREP, papl),
+        subject(NUMB, PERS), pref agent, opt circumstances
+/               pref agent, ",SUBJ [", participle, ",OBJ ", subject, PP,
+                 opt circumstances, "]"
+.
+# EX to you has been given an enormous task by him
+
+## impersonal phrase:
+##   opt circumstances, Wit, copula(sing,third), predicate, pref comma,
+##         subject(sing,third)
+##/    subject, "|", predicate, opt circumstances, copula, "]
+# EX it was not clear what you did
+##.
+
+#---------------------------RELATIVE CLAUSE--------------------#
+# The relative clause follows the SVOC pattern, apart from the
+# fact that the subject S, the complement C or the object O may be
+# found to the left of the phrase. Hence VOC, SVOnC and SVCnO.
+
+ SVOnC phrase(PREP):
+    subject(NUMB, PERS), verb group(TRAN, PART, PREP, NUMB, PERS),
+          OC phrase(TRAN, PART,none)
+/    "[", verb group, OC phrase, "|INVSUBJ ", subject, "]"
+.
+# EX it will be you to whom I return the book
+# EX it will be you to whom I give it back
+
+ SVCnO phrase(trav), SVCnO phrase:
+    subject(NUMB, PERS), verb group(trav, none, PREP, NUMB, PERS),
+           OC phrase(intr,none,PREP)
+/   ",INVOBJ [", verb group, OC phrase, "|INVSUBJ ", subject, "]"
+# EX that's the book which I returned to you yesterday
+.
+
+SVCnO phrase:
+    subject(NUMB, PERS), copula(NUMB,PERS), opt circumstances
+/         ",", opt circumstances, copula, "|INVPRED ", subject
+.
+# EX that's what it is
+
+ rel clause(NUMB,PERS,nom):
+# preposed subject
+    [Wcomma], pref relpron(nom), subject(NUMB2, PERS2), copula(NUMB2, PERS2),
+    [Wcomma]
+/           ",INVPRED ", subject, copula
+;
+# EX he was the child which he was
+# EX you're not half the man you used to be
+    [Wcomma], LEX_RELPRON(nom), VOC phrase(NUMB, PERS), [Wcomma]
+/           ",", VOC phrase
+# EX I hate the man who is looking at me
+# EX I will forgive those who have trespassed against me
+# EX I will kill you who are my brother
+.
+
+ rel clause(gen):
+   # -- as subject
+   [Wcomma], LEX_RELPRON(gen), noun group(NUMB, PERS,nom),
+       VOC phrase(NUMB, PERS), [Wcomma]
+/   ",INVof [", noun group, ",", VOC phrase, "]"
+# EX this is the man whose friend opened a restaurant
+# EX the owner whose cat died of hunger cried with remorse
+# EX this is a man whose heart is open
+;
+   [Wcomma], LEX_RELPRON(gen), noun group(NUMB,PERS,nom),
+    subject(NUMB1,PERS1), copula(NUMB1, PERS1), opt circumstances
+/   ",INVof [", noun group, ",INVPRED [", subject, ",",
+       opt circumstances, "]]"
+# EX this is the man whose book it was yesterday
+# EX you know the man whose brother I am  #*
+# EX the man whose car was devastated by an earthquake was shocked
+# EX the man whose shoes were polished left
+# EX this is the man whose book was found by me
+;
+   # -- as object
+   [Wcomma], LEX_RELPRON(gen), NP(NUMB,third,acc), SVCnO phrase
+/   ",INVof [", NP, SVCnO phrase, "]"
+# EX this is the man whose book I return to you
+;
+   # -- partitive (unfinished)
+   Wcomma, LEX_DET(NUMB), Wof, LEX_RELPRON(gen), NP(NUMB,third,nom),
+     VOC phrase(NUMB,PERS), pref comma
+/   ",INVof [", NP, ",DET ", LEX_DET, "|", VOC phrase, "]"
+# EX the children, some of whose voices sounded tired, were welcomed 
+;
+   Wcomma, quantity, Wof, LEX_RELPRON(gen), NP(NUMB1,third,nom),
+     VOC phrase(NUMB,PERS), pref comma
+/   ",INVof [", NP, ",QUANT ", quantity, "|", VOC phrase, "]"
+# EX our society, one of whose goals is to help the poor, failed miserably. 
+;
+   Wcomma, quantity, Wof, LEX_RELPRON(dat), VOC phrase(NUMB,PERS), pref comma
+/   ",QUANT ", quantity, "|", VOC phrase
+# EX There were three men, one of whom had to be the killer. 
+;
+   Wcomma, LEX_DET(NUMB), Wof, LEX_RELPRON(dat),
+     VOC phrase(NUMB,PERS), pref comma
+/   ",DET ", LEX_DET, "|", VOC phrase
+# EX the others, many of whom were hurt, were rushed to the hospital 
+.
+
+ pref comma: Wcomma; PRICE.
+
+ rel clause(dat):
+    some preposition(PREP), LEX_RELPRON(dat), SVOnC phrase(PREP)
+/           ",INV", some preposition, SVOnC phrase
+;
+# EX this is the house in which I live
+# EX this is the man for whom I am paying
+    pref relpron(dat), SVOnC phrase(PREP), some preposition(PREP)
+/           ",INV", some preposition, SVOnC phrase
+.
+# EX this is the person I am paying for
+# EX this is the plan that I agreed to
+# EX this was the book I asked for
+
+ rel clause(acc):
+    pref relpron(acc), SVCnO phrase(trav)
+/           SVCnO phrase
+.
+# EX this is the man that I saw
+# EX the movie star was seen with the man she loved
+
+ pref relpron(CASE):
+     [Wcomma], LEX_RELPRON(CASE);
+     $PENALTY(6).
+
+
+#---------------------------NOUN PHRASE------------------------#
+
+#                   NP
+#                   |--------- quoted phrase
+#                   |--------- verbal noun phrase
+#               noun phrase---- coordinator, noun phrase
+#          adverb----|
+#        determiner--|
+#                  noun part
+#                   |--------rel clause
+#                   |--------refl pron
+#                  noun group OR pers pron
+#   attr adjectives--|--------postmodifiers
+#        participle--|
+#              noun kernel
+#            NOUN----|
+#                   noun
+
+
+ NP,NP(CASE),NP(NUMB,PERS,CASE):
+   noun phrase(NUMB,PERS,CASE)
+;
+   Wsub, noun phrase(NUMB, PERS, CASE), Wbus
+/     noun phrase
+;
+   quoted phrase(NUMB, PERS, CASE), PRICE
+.
+
+ quoted phrase(sing,third,nom|dat|acc):
+    [Wcolon], Wquoteopen(INT), statement, Wquoteclose(INT)
+/ statement
+# EX he said: "you are right".
+;
+    Wquoteopen(INT), NP, [Wcomma], Wquoteclose(INT)
+/ NP
+# EX I do not need your "sympathy"
+.
+
+ noun phrase(sing,third,nom|dat):
+   robust NP
+     / "[", robust NP, "]"
+; 
+# EX the real killer was bacillus subtilis
+# EX he used ((2-azido-4-benzyl)phenoxy)-n-ethylmorpholine in his coffee
+    PRICE, PRICE, verbal noun phrase
+/    "[", verbal noun phrase, "]"
+.
+
+ noun phrase(plur,PERS,CASE):
+    LEX_PAIRDET(TEXT), noun phrase(NUMB, PERS, CASE),
+         LEX_PAIRDET(TEXT), noun phrase(NUMB1, PERS, CASE),
+           BONUS,BONUS
+/           "[", noun phrase.1, "|", noun phrase.2, "]"
+# EX neither man nor beast can know the will of God
+;
+    noun part(NUMB, PERS, CASE), coordinator(coo),
+         noun phrase(NUMB1, PERS1, CASE)
+/           "[", noun part, "|", noun phrase, "]"
+;
+# EX The good, the bad and the ugly gave a new twist to the genre
+# EX the ant and the grasshopper lived happily ever after
+    noun part(NUMB, PERS, CASE), noun part(NUMB1, PERS1, CASE),
+       coordinator(coo), noun phrase(NUMB2, PERS2, CASE), $PENALTY(6)
+/        "[", noun part.1, "|", noun part.2, "|", noun phrase, "]"
+# EX the vending machine includes a card dispenser a printer and a coin acceptor
+.
+
+ noun phrase(NUMB,PERS,CASE):
+    noun part(NUMB, PERS, CASE)
+;
+# EX all the world is just a dream
+    noun part(sing,PERS2,CASE2), Waccent s, noun group(NUMB,PERS,CASE)
+/               "[", noun group, ",of ", noun part, "]"
+# EX he is following nature's call
+# EX two of John's friends opened the door
+;
+    noun part(plur,PERS2,CASE2), Waccent, noun group(NUMB,PERS,CASE)
+/               "[", noun group, ",of ", noun part, "]"
+# EX that's the generals' problem
+;
+    noun part(NUMB, PERS, CASE), rel clause(NUMB,PERS,nom)
+/           "[", noun part, rel clause, "]"
+;
+    noun part(NUMB, PERS, CASE), rel clause(gen|dat|acc)
+/           "[", noun part, rel clause, "]"
+##;
+##    noun part(NUMB, PERS, CASE), PRICE, PRICE, that clause
+##/           "[", noun part, ",THAT ", that clause, "]"
+# EX this happened at the time that I learned to drive a car
+# EX he heard the story that she was ill
+.
+
+ noun part(NUMB,third,CASE):
+    LEX_PREDET(NUMB), noun part(NUMB, PERS, CASE), BONUS
+/  "[", noun part, ",MOD ", LEX_PREDET, "]"
+;
+    noun group(NUMB, third, CASE), PRICE, PRICE, PRICE
+;
+    article(NUMB), noun group(NUMB,third,CASE)
+/      noun group
+;
+     article(sing), LEX_QNOUN, Wof, BONUS,
+        [article(NUMB)], noun group(NUMB1,third,CASE)
+/   noun group
+# EX a number of visitors was killed
+# EX a number of the visitors were killed
+;
+    LEX_DET(NUMB), noun group(NUMB,third,CASE)
+/    "[", noun group, ",DET ", LEX_DET, "]"
+# EX most gnus are good gnus
+;
+    LEX_DET(NUMB), Wof, noun group(NUMB,third,CASE)
+/    "[", noun group, ",DET ", LEX_DET, "]"
+# EX some of those people are tired
+# EX most of the lobster is edible
+;
+     LEX_POSSPRON, noun group(NUMB,third,CASE)
+/    "[", noun group, ",DET ", LEX_POSSPRON, "]"
+# EX my home is my castle
+;
+     quantity, [Wof], BONUS,
+         noun group(NUMB,third,CASE), [unitshift]
+/     "[", noun group, ",QUANT ", quantity, [].2, "]"  #XXX
+# EX forty robbers were sitting at the campfire
+# EX 1 kilo of pure gold is worth a fortune
+# EX I saw twelve of them in the garden
+# EX four of the world's best detectives could not find it #***
+# EX the concentration was assayed at 300 mumol / l #*
+.
+
+ noun part(NUMB,PERS,CASE):
+   LEX_PERSPRON(NUMB, PERS, CASE)
+.
+
+ noun group(NUMB,third,CASE):
+   attr adjective, noun group(NUMB,third,CASE), BONUS
+/           "[", noun group, ",ATTR ", attr adjective, "]"
+;
+# EX it is better to let sleeping dogs lie
+   LEX_ADJE(comp,none), noun group(NUMB,third,CASE), Wthan, predicate
+/           "[", noun group, ",ATTR ", LEX_ADJE, "|", predicate, "]"
+;
+# EX it required a larger torque than attainable in practice
+# EX it required a larger torque than that attainable in practice
+   participle(trav, none, none, papl), noun group(NUMB,third,CASE)
+/  "[",noun group,",ATTR ",participle,
+              "|INVOBJ ",participle,
+                                       "]" 
+;
+# EX that is merely acquired behaviour
+# EX he spoke with studied insolence
+    noun kernel(NUMB)
+;
+    noun kernel(NUMB), [Wcomma], postmodifiers
+/           "[", noun kernel, ",", postmodifiers, "]"
+# EX she grew up in a little house in the dark forest
+;
+    LEX_NOUNX(NUMB,infcomp), pref addressee, infinitive clause,
+         BONUS, BONUS, BONUS
+/       "[", LEX_NOUNX, ",THAT [", pref addressee, ",", infinitive clause, "]]"
+;
+# EX I found the suggestion to leave the body there repulsive
+# EX he ignored the cry for him to abdicate
+    LEX_NOUNX(NUMB,ascomp), PP(of|as|by), BONUS, BONUS, BONUS
+/           "[", LEX_NOUNX, ",", PP, "]"
+# EX the acknowledgement of Tiberius as emperor by the senate came promptly
+# EX the acknowledgement by the senate of Tiberius came promptly
+.
+
+ noun kernel(NUMB):
+    noun(NUMB)
+;
+#    noun(NUMB), index, BONUS
+#/   "[", noun, ",ATTR ", index, "]"  NOT YET
+# EX the lateral force causes spindle 1 to move over axis 2
+# EX most of the trade was in Class A shares
+#;
+    noun(NUMB,XPREP), PP(XPREP), BONUS
+/   "[", noun, ",", PP, "]"
+# EX democracy requires freedom from hunger
+# EX exemption from taxes itself is not enough
+;
+    noun kernel(NUMB), LEX_REFLPRON(NUMB,PERS)
+/         noun kernel
+# EX the pupil himself made not a single error
+;
+    PRICE, noun(sing), noun kernel(NUMB)
+/           "[", noun kernel, ",ATTR ", noun, "]"
+.
+# EX air pollution is pollution of the air
+
+ noun(NUMB,PREP):
+     LEX_NOUN(NUMB,PREP).
+
+ noun(NUMB):
+    LEX_NOUN(NUMB)
+!
+    PRICE, PRICE, PRICE, attr adjective
+/           "N:", attr adjective
+.
+# EX the bold and the beautiful can do what they like
+
+ postmodifiers:
+  postmodifier;
+# EX I saw Hercules eyeless in Gaza #*
+  postmodifier, Wand, postmodifiers
+/      "[", postmodifier, "|", postmodifiers, "]"
+.
+# EX a man drinking too much wine and spending all his money on women of light virtue
+
+ postmodifier:
+    P(PREP), ({PREP :: of}, BONUS! )
+# EX I expect some pollution of the water by effluents
+# EX I've always wanted to meet the man on the moon
+# EX he was hurt in a fall off the cliff
+# EX iron supplementation during pregnancy is important
+;
+    LEX_ADJE(post,none)
+/     "ATTR ", LEX_ADJE
+# EX they lived here from time immemorial
+# EX bread alone is not enough
+;
+    PRICE, PRICE, parenthesis
+# EX Dennis, the well-known menace, is a cartoon strip figure
+;
+    PRICE, adjectival
+/      adjectival
+# EX we discovered a paradise forgotten by time
+;
+    PRICE, noun purpose
+# EX Madeira was a paradise for walking in *
+;
+    [Wcomma], pred adjective
+/       "|ATTR ", pred adjective
+# EX mankind lives not by bread alone
+.
+
+ parenthesis:
+   Wcomma, predicate, Wcomma
+/          predicate
+;
+# EX Rhone Poulenc, the French chemical enterprise, was the coordinator.
+# EX sand, mixed with wet clay, is an excellent building material.
+         Wopen, predicate, Wclose
+/           predicate
+.
+# EX the whole family(man, wife and children) was killed
+
+#---------------------------VERBAL NP--------------------------#
+
+ verbal noun phrase:
+    infinitive clause;
+    ##bare infinitive clause;
+    ing clause;
+    what clause;
+    that clause.
+
+ infinitive clause:
+      PRICE, Wto, infinitive(TRAN,PART,PREP), OC phrase(TRAN,PART,PREP)
+/           "[", infinitive, OC phrase, "]"
+;
+# EX to know you is to love you
+    BE, Wto, copula(infi), predicate, {CASE :: nom}
+/            "[", BE, ",", predicate, "]"
+.
+# EX just to be here is bliss
+
+ ing clause:
+    PRICE, pOC phrase(prpl)
+/        pOC phrase
+.
+# EX not reading the manual is stupid
+# EX I am accustomed to reading everything
+
+ what clause:  #including how, why and when
+    LEX_QPRON(nom), VOC phrase(NUMB,third), IT
+/           "[", IT, ",", VOC phrase, "]"
+;
+# EX what causes the problem is clear
+# EX whoever is found will be saved
+    LEX_QPRON(acc), SVCnO phrase, IT
+/           "[", IT, SVCnO phrase, "]"
+;
+# EX what you give to others is given to you
+     LEX_QPRON(dat), subject(NUMB, PERS), verb group(TRAN, PART, PREP, NUMB, PERS),
+          OC phrase(TRAN, PART,none),  LEX_PREPOS(PREP), IT
+/           "[", IT, ",SUCHTHAT [", subject, ",SUBJ[", verb group, OC phrase, "|", PREP, " ", IT, "]]]"
+# EX whatever you believe in is wonderful
+;
+    CON(quest), statement, IT
+/     IT, statement
+# EX how you arrived here is irrelevant to us
+    # how large you are?
+.
+
+ that clause:
+    LEX_CPRON, SVOC phrase
+/   SVOC phrase
+# EX somebody told me that the car was ready
+# EX Who will tell him that she is dead?
+# EX Who will tell him she's dead?
+# EX he declined to say how much he offered for the shares #object is te veel!
+.
+
+
+#---------------------------PP---------------------------------#
+
+# PP(PREP) matches a sequence of preposition phrases(P(PREP)
+# according to the following PP attachment strategy:
+# Verbs, nouns and adjectives may prefer certain prepositions.
+# If one of the preferred prepositions is found(by PP(XPREP))
+# a bonus is given. A malus is given to every nonpreferred PP
+# following or preceding the preferred PP.
+# Thus, always the last of the preferred prepositions in the
+# set XPREP is matched with a (double) bonus.
+
+ PP(XPREP):
+    P(XPREP), [PP], BONUS, BONUS
+/           P, []
+# EX he was addicted to smoking
+# EX he traveled to Rome by way of Gibraltar
+;
+    P(PREP), PP(XPREP)
+# EX he traveled by way of Gibraltar to Rome
+;
+    P(PREP), coordinator(coo), PP(XPREP)
+/           P, PP
+# EX the path went over meadows and over hills
+.
+
+ PP:
+    P(PREP), [PP]
+.
+# EX he traveled by way of Gibraltar
+
+ P(PREP):
+    opt adverbs, LEX_PREPOS(PREP), NP(dat)
+/           opt adverbs, "|", LEX_PREPOS, NP
+.
+
+#---------what about 'between...and' and 'within...of'?
+
+ pref PP(XPREP):
+    PP(XPREP)
+.
+ pref PP(none):
+ $PENALTY, [PP], {PREP::none}
+.
+
+#---------------------------COMPLEMENTS------------------------#
+
+ subject(NUMB,PERS):
+    NP(NUMB, PERS, nom)
+/           NP
+;
+    coordinator(sub), predicate, pref comma, NP(NUMB, PERS, nom)
+/          "[", NP, ",", predicate, "]"
+# EX although hurt, he escaped with his life
+;
+    [coordinator(sub)], adjectival, pref comma, NP(NUMB, PERS, nom)
+/          "[", NP, ",", adjectival, "]"
+# EX screaming like a pig he was carried away
+;
+    copula(prpl), predicate, pref comma, NP(NUMB, PERS, nom)
+/          "[", NP, ",", predicate, copula, "]"
+# EX not being a moderate man, he preferred to go to the theatre
+;
+    {NUMB::plur}, {PERS::third}, $PENALTY(5),
+       NP(sing, third, nom)  #for collective nouns
+# EX the police are always right
+.
+
+ pref object:
+    object
+/   object
+;
+   $PENALTY(3), IT
+/    ",OBJ ", IT
+.
+
+ object:
+       NP(NUMB, PERS, acc)
+/ ",OBJ ", NP
+# EX he should blame himself for this
+;
+   that clause
+/   ",THAT [", that clause, "]"
+# EX I saw that he had done it himself
+;   what clause
+/   ",OBJ ", what clause
+# EX people told me what he had done
+.
+
+ indirect object(to):
+    noun phrase(NUMB,PERS,dat)
+/           "|to ", noun phrase
+# EX I gave these people all my money
+.
+
+ pref agent:
+     LEX_PREPOS(by), NP(dat), BONUS, BONUS
+/           NP
+;
+     IT
+.
+
+ pref addressee:
+     LEX_PREPOS(for), NP(dat), BONUS, BONUS
+/           NP
+;
+     IT
+.
+
+ predicate:
+    predicate, Wcomma, predicate
+/   predicate.1, "|", predicate.2
+;
+    PRICE, predicate, circumstances
+/   predicate, circumstances
+# EX all this work was in vain
+;
+    Wmore, predicate, Wthan, predicate
+/     predicate.1, "|", predicate.2
+# EX he is more sinned against than sinning
+# EX your friendship is more enduring than the love of a woman
+;
+   adjective
+/    "ATTR ", adjective
+# EX my skin was black and blue
+# EX your friend appears to be very stupid this morning
+# EX the roman empire was up for grabs
+# EX I am sorry that I couldn't help you
+;
+    noun phrase(NUMB, PERS, nom|acc)
+/     "PRED ", noun phrase
+# EX I am your friend, I kill you for nothing
+;
+    LEX_GENPRON
+/     "ATTR ", LEX_GENPRON
+# EX is this overcoat yours?
+;
+   adjectival
+# EX he was loved by most people in the world
+# EX he was yelled at by some people
+;
+   PRICE, PRICE
+/     
+# EX what is is
+.
+
+#---------------------------VERB PHRASE------------------------#
+
+ VOC phrase(NUMB,PERS):
+    VOC phrase(NUMB, PERS),
+             coordinator(coo|sub), VOC phrase(NUMB, PERS)
+/    VOC phrase.1, "|", VOC phrase.2
+# EX I gave it to you and was pleased by the result
+# EX the apparatus includes a calculator and does not require a tachogenerator
+# EX Scrolling changes the display but does not move the insertion point
+;
+    verb group(TRAN, PART, PREP, NUMB, PERS),
+       OC phrase(TRAN, PART, PREP)
+/           "SUBJ [", verb group, OC phrase, "]"
+# EX you meet your maker
+# EX do you like sandwiches for breakfast #*
+# EX he brought this out in the conversation
+;
+    verb group(TRAN, PART, PREP, NUMB, PERS),
+       OC phrase(TRAN, PART, PREP), Wcomma, adjectival
+/           "SUBJ [", verb group, OC phrase, "|", adjectival, "]"
+# EX he ran home, crying for help
+;
+    copula(NUMB, PERS), predicate
+/     predicate, copula  
+# EX you are my friend
+# EX she became red in the face
+# EX he had been on a pelgrimage to Santiago
+# EX what was then is now
+# EX I am
+# EX his pride was hurt
+# EX it was given to me by my father's hand
+;
+# --- preposed indirect object  SUSPECT
+  copula(NUMB, PERS), participle(ditr, none, to, papl), object,
+       pref agent, opt circumstances
+/      "INVto [", participle, object, "|INVSUBJ ", pref agent,
+                 opt circumstances, "]"
+# EX he was given a present by his parents #
+.
+
+ pOC phrase(prpl):
+    participle(TRAN, PART, PREP, prpl), OC phrase(TRAN, PART, PREP)
+/             "[", participle, OC phrase, "]"
+# EX he gave signals consisting of dots and stripes
+;
+    pOC phrase(prpl), coordinator(coo|sub), pOC phrase(prpl)
+/             "[", pOC phrase.1, "|", pOC phrase.2, "]"
+# EX he was carried away, kicking his captors and screaming fitfully
+.
+
+ pnOC phrase(prpl):
+    participle(trav, PART, PREP, prpl), OC phrase(intr, PART, PREP)
+/             "[", participle, OC phrase, "]"
+# EX he was a person to dislike
+;
+    pnOC phrase(prpl), coordinator(coo|sub), pnOC phrase(prpl)
+/             "[", pnOC phrase.1, "|", pnOC phrase.2, "]"
+# EX he was a person to love or hate
+.
+
+#---------------------------OC phrase -------------------------#
+
+ # The OC phrase covers the main complementation variants
+ # (subcategorization) of the verb. They are distiguished by
+ # three affixes TRAN, PART and PREP.
+ # The PART affix(when not none) serves to capture a floating
+ # verb particle, which will be transduced adjeacent to the verb.
+ # The TRAN subcategories are:
+ # (based mostly on the SPECIALIST lexicon)
+ #     intr  should be nonp
+ #     tran  should be np
+ #        optional to+ing, dat mvmnt; malus if missing np
+
+OPTION OC phrase(TRAN, PART, PREP).
+
+ OC phrase(intr,PART,PREP):
+   particle(PART), pref PP(PREP), pref circumstances
+/   ",", pref PP, pref circumstances
+# EX he went back by the shortest route to his house
+# EX he conceded with grace to my demands
+# EX she agreed to his wishes with pleasure
+# EX it worked in all respects
+# EX she agreed instantly
+;
+# ------------------------------ link+adj??
+   particle(PART), attr adjective, pref PP(PREP), opt circumstances
+/   ",", pref PP, opt circumstances, "]|PRED [", attr adjective
+# EX all the neighbours turned green with envy
+.
+
+ OC phrase(trav,PART,PREP):
+    object, particle(PART), pref PP(PREP), [circumstances]
+/               object, pref PP, []
+;
+# EX I bring a gift to the gods this day
+# EX I promise to give the bottle back to you as soon as possible
+# EX I bring to the gods a gift this day
+# EX I bring this day to the gods a gift
+# EX I bring to the gods this day a gift
+# EX I returned to him 12 full bottles in a box
+# EX I saw in the distance a car coming
+    PRICE, {PART :: none}, pref PP(PREP), opt circumstances
+/           ",", pref PP, opt circumstances
+# EX I promise to return to you as soon as possible
+;
+    NP(NUMB, PERS, acc), inf phrase, particle(PART), pref PP(PREP),
+        opt circumstances
+#was /           ",OBJ [", NP, ",SUBJ ", inf phrase, "]", pref PP, opt circumstances
+/           ",OBJ [", NP, ",", inf phrase, "]", pref PP, opt circumstances
+# EX I saw her break every bone in his body
+.
+
+ OC phrase(ditr,PART,to):
+    BONUS, BONUS, indirect object(to), particle(PART), [circumstances],
+            object, [circumstances]
+/         object, indirect object, [].1, [].2
+# EX I owe you all I have in my life
+.
+
+ OC phrase(cplx,none,none):
+    noun phrase(NUMB,PERS,acc), predicate, opt circumstances, BONUS
+/      ",OBJ [", noun phrase, ",", predicate, opt circumstances, "]"
+# EX he called him an animal
+# EX this made his nose their target
+# EX it turned his nose red
+# EX we painted the town red
+;
+     noun phrase(NUMB,PERS,acc), inf phrase, BONUS
+/      ",OBJ [", noun phrase, ",", inf phrase, "]"
+# EX I let him back the car away
+;
+     noun phrase(NUMB,PERS,acc), Wto, inf phrase, BONUS, BONUS
+/      ",OBJ [", noun phrase, ",", inf phrase, "]"
+# EX I caused him to back away the car
+# EX this remark caused his grey cells to do overwork  #?
+# EX it was too late to flee from the seething flames
+.
+
+ OC phrase(fincomp,none,XPREP):
+    PP(XPREP), that clause, BONUS, BONUS
+/   ",", PP, "|THAT [", that clause, "]"
+.
+# EX OPEC officials agree with him that the situation will be reversed
+
+ OC phrase(fincomp,none,none):
+    that clause, BONUS, BONUS
+/   ",THAT [", that clause, "]"
+.
+# EX OPEC officials agree that the situation will be reversed
+
+ inf phrase(PREP):
+   infinitive(TRAN,PART,PREP), OC phrase(TRAN,PART,none)
+/      "[", infinitive, OC phrase, "]"
+# EX he was not a man to trifle with
+.
+
+ inf phrase:
+   infinitive(TRAN,PART,PREP), OC phrase(TRAN,PART,PREP)
+#was /      "[", infinitive, OC phrase, "]"
+/      "SUBJ [", infinitive, OC phrase, "]"
+;
+# EX it made his nose turn red
+   copula(infi), predicate
+/      predicate, copula
+# EX I saw her be very strong
+.
+
+ adj purpose:
+    preposition(for), pOC phrase(prpl), BONUS
+/         "SUBJ ", pOC phrase
+# EX he was famous for always making mistakes
+;
+    preposition(for), pnOC phrase(prpl), BONUS
+/         "INVOBJ ", pnOC phrase
+# EX the cake was ready for eating
+;
+    preposition(for), NP(NUMB,PERS,dat), Wto,
+      infinitive(trav,none,PREP), pref PP(PREP), BONUS
+/          "{", NP, ",SUBJ[", infinitive, ",", pref PP, "]}"
+# EX that is not for you to decide      # low priority?
+;
+    ["in order", BONUS], Wto, inf phrase
+/         inf phrase
+# EX she was not ready to complain      # adverb ophanging?
+# EX the enemy soldiers were quick to flee from the scene
+;
+    Wto, inf phrase(XPREP), some preposition(XPREP)
+/         "INV", some preposition, inf phrase
+# EX we made the rag ready to clean the dishes with
+.
+
+ noun purpose:  # how far can this be unified with previous??
+    preposition(for), pOC phrase(prpl), BONUS
+/         "SUBJ ", pOC phrase
+# EX he was the right man for taming the tides
+;
+    preposition(for), pOC phrase(prpl), some preposition(in)
+/         "INVin ", pOC phrase
+# EX he found himself a paradise for walking in # HIGH AMBIGUITY?
+;
+    preposition(for), pnOC phrase(prpl), BONUS
+/         "INVOBJ ", pnOC phrase
+# EX there were some leftovers for eating
+;
+    preposition(for), NP(NUMB,PERS,dat), Wto,
+      infinitive(trav,none,XPREP), some preposition(XPREP), BONUS
+/        "INV", some preposition, " [", infinitive, ",INVSUBJ ", NP, "]"
+# EX she brought a little toy for him to play with
+;
+    ["in order"], Wto, inf phrase
+#was /         "SUBJ ", inf phrase
+/         inf phrase
+# EX she was not a person to complain
+;
+    Wto, infinitive(trav,none,none), BONUS
+/         "INVOBJ ", infinitive
+# EX it was just a job to do
+;
+    Wto, inf phrase(XPREP), some preposition(XPREP)
+/         "INV", some preposition, inf phrase
+# EX a rag to clean the dishes with is a first necessity 
+.
+
+#---------------------------VERB GROUP-----------------------------#
+
+ verb group(TRAN,PART,PREP,NUMB,PERS):
+    verb form(TRAN, PART, PREP, NUMB, PERS)
+# EX father knows best
+# EX its surface felt rough to the touch
+;
+    auxverb(NUMB, PERS), infinitive(TRAN, PART, PREP)
+/    "[", infinitive, ",", auxverb, "]"
+# EX he may not know    # modifiers in auxverb?
+;
+    LEX_TOHAVE(NUMB, PERS), BONUS, participle(TRAN, PART, PREP, papl)
+/           participle
+;
+# EX he has known
+    copula(NUMB, PERS), BONUS, participle(TRAN, PART, PREP, prpl)
+/           "[", participle, ",", copula, "]"
+# EX he seems to be going
+# EX he has been going
+.
+
+ verb group(TRAN,PART,PREP,NUMB,PERS):
+    verb form(TRAN1,none,none,NUMB, PERS),
+      to marker, infinitive(TRAN, PART, PREP)
+/           verb form, to marker, "]|SUBJ [", infinitive
+# EX he hesitated to strike
+# EX we serve to protect
+.
+
+## verb group(link,none,none,NUMB,PERS):
+##    verb form(TRAX,none,none,NUMB, PERS),
+##      to marker, copula(infi), BONUS
+##/           verb form, to marker, "]XX|"
+### EX he prefers to be spared
+### EX I try to be polite
+##.
+
+#---------------------------ADJECTIVE PHRASE--------------------#
+
+ adjective:
+   attr adjectives
+;
+   pred adjectives
+.
+
+ attr adjectives:
+    [LEX_DET(NUMB)], attr adjective, [coordinator(coo)], attr adjectives
+/           "[", attr adjective, "|", attr adjectives, "]"
+;
+# EX his hide was red, green and blue
+    attr adjective.
+
+ pred adjectives:
+    [LEX_DET(NUMB)], pred adjective, [coordinator(coo)], pred adjectives
+/           "[", pred adjective, "|", pred adjectives, "]"
+;
+# EX his wrist was swollen and warm to the touch
+    pred adjective.
+
+ attr adjective:
+    adverb(intens), attr adjective
+/       "[", attr adjective, ",MOD ", adverb, "]"
+# EX the teeth of my dog are always sharper
+;
+    LEX_ADJE(ATTR,none)
+# EX the well-known wellknown man is well known
+# EX do not attempt to break the seventh seal
+# EX that was my never-do-well nephew
+;
+    PRICE, LEX_NOUN(NUMB), LEX_ADJE(abso, to)
+/           "[", LEX_ADJE, ",|to ", LEX_NOUN, "]"
+# EX its fully abrasion resistant skin was clearly visible
+;
+    PRICE, participle(TRAX, none, none, prpl),
+        ({TRAX :: intr}; PRICE)
+/      "A:", participle
+.
+# EX the silence had a calming effect
+
+ pred adjective:
+     LEX_ADJE(pred, none)
+/           LEX_ADJE
+# EX now we are alone
+;
+     LEX_ADJE(GRAD, XPREP), PP(XPREP)
+/           "[", LEX_ADJE, ",", PP, "]"
+# EX his writings are reminiscent of James Joyce
+;
+     LEX_ADJE(comp,none), Wthan, NP
+/            "[", LEX_ADJE, ",INVATTR ", NP, "]"
+;
+# EX his smile was somewhat larger than life
+    LEX_ADJE(supl,none), PP(of)
+/           "[", LEX_ADJE, ", ", PP, "]"
+# EX he was the worst of the lot
+;
+    LEX_ADJE(GRAD,PREP), adverb(post)
+/       "[", LEX_ADJE, ",MOD ", adverb, "]"
+# EX the pupil was definitely bright enough
+# EX one man alone can't do it
+;
+    attr adjective, adj purpose
+/   attr adjective, "|", adj purpose ## how insertion of adverb?
+;
+# EX he was too good to be caught
+# EX small fish are best to eat fried
+# EX this ointment is good for catching lice
+    attr adjective, PP(as)
+/           "[", attr adjective, ",", PP, "]"
+# EX he shall be washed as white as snow
+;
+    attr adjective, that clause, BONUS, BONUS
+/   "[", attr adjective, ",THAT [", that clause, "]]"
+# EX it is clear that you are a linguist
+# EX the dog ran so fast that he caught up with his own tail
+# EX I am not so sure why you should be the winner
+# EX the European Union was afraid that the terrorists would attack
+# EX I was afraid you would say that
+.
+
+ adjectival:
+ ## too many cases are distinguished, must be generalized
+    adjectival, coordinator(coo|sub), adjectival
+/             adjectival.1, "|", adjectival.2
+# EX he was carried away, kicking his captors and screaming fitfully
+;
+    copula(prpl), predicate
+/   predicate, copula
+# EX it was just a man being difficult
+;
+    participle(TRAN, PART, PREP, prpl), OC phrase(TRAN, PART, PREP)
+/             "SUBJ [", participle, OC phrase, "]"
+# EX he gave signals consisting of dots and stripes
+# EX I see a lion flying through the air
+;
+    [Wto, LEX_TOBE(infi)],
+        participle(trav, none, XPREP, papl), opt circumstances,
+          pref PP(XPREP), pref agent, opt circumstances
+/           "INVOBJ [", participle, ",INVSUBJ ", pref agent, opt circumstances.1,
+                 opt circumstances.2, pref PP, "]"
+# EX he gave signals based on the morse code
+# EX the material to be separated is charged into a container
+;
+    [Wto, LEX_TOBE(infi)],
+        participle(trav, none, PREP, papl), opt circumstances,
+          pref agent, pref PP(PREP), opt circumstances
+/           "INVOBJ [", participle, ",INVSUBJ ", pref agent, opt circumstances.1,
+                  pref PP, opt circumstances.2, pref PP, "]"
+# EX he gave signals based by him on the morse code
+# EX my daughter was all dressed up for the dance
+;
+    participle(trav|intr, none, PREP, papl), some preposition(PREP), pref agent
+/         "|INV", some preposition,"[",participle,",INVSUBJ ", pref agent, "]"
+# EX the evidence relied on was at best shaky
+# EX the evidence was relied on by him
+;
+    participle(trav, none, PREP, papl), pref object,
+       preposition(PREP), pref agent, PRICE
+/         "|INV", preposition,"[[",participle,",INVSUBJ ",
+              pref agent, "]", pref object, "]"
+;
+# EX he looked like a man thrown a stone at
+# --- complex
+    participle(cplx, none, PREP, papl), BONUS,
+         predicate, pref agent, opt circumstances
+/   "INVOBJ [", participle, ",INVSUBJ ", pref agent,
+         opt circumstances, "]|", predicate
+;
+# EX he was called Tristan by his friends
+# --- ditr
+   participle(ditr, none, to, papl),
+       indirect object(to), pref agent, opt circumstances
+/        "INVOBJ [", participle, ",INVSUBJ ", pref agent, indirect object,
+                 opt circumstances, "]"
+# EX it has been owed me by you
+.
+
+#-------------------------QUESTION---------------------------#
+# in questions, either a link or auxiliary verbform of the verbal part
+# precedes the subject, allowing the patterns  xSpred and  vSvOC
+# or a subject, object or complement is topicalized(without determiner)
+# with the patterns VOC, vSvCnO and vSvOnC .
+
+# We distinguish in the transduction two types of questions:
+#  * yes/no questions, starting with {QUESTION instead of QUESTION
+#         (where QUESTION is used as a marker)
+#  * specific questions, asking for some topic, transduced as
+#         {topic ,SUCHTHAT sentence }
+#    which can be seen as a quanticized(and often typed) predicate.
+
+ question:
+    LEX_CON(quest), vSvOC phrase
+/           "{", LEX_CON, ",SUCHTHAT [", vSvOC phrase, "]}"
+;
+# EX when will you forgive me?
+    vSvOC phrase
+/           "{QUESTION ", vSvOC phrase, "}"
+;
+# EX could you forgive me the errors of my ways?
+    LEX_CON(quest), xSpred phrase
+/           "{", LEX_CON, ",SUCHTHAT [", xSpred phrase, "]}"
+;
+# EX why are you not more concerned about the consequences of your deeds?
+    xSpred phrase
+/           "{QUESTION ", xSpred phrase, "}"
+;
+# EX am I going home in the morning?
+    Whow, predicate, copula(NUMB, PERS), subject(NUMB, PERS)  # attr adjective instead
+/      "{", predicate, "SUCHTHAT [", subject, ",", predicate, "]}"
+;
+# EX how green is my valley?
+# EX how clinging to the seat are you?
+# EX how open to negotiation is your offer?
+# -----
+    LEX_QPRON(nom), subject(NUMB,PERS),
+       VOC phrase(NUMB, PERS)
+/               "{", subject, ",SUCHTHAT [", subject, ",", VOC phrase, "]}"
+;
+# EX which country was the site of your birth?
+# EX which end is up?
+# EX which sons are yours?
+# EX what unfortunate stranger has fallen into your clutches?
+# EX which bastard has stolen my car?
+# EX which son are you?
+    LEX_QPRON(nom),
+       VOC phrase(NUMB, PERS), IT
+/               "{", IT, " ,SUCHTHAT [", IT, ",", VOC phrase, "]}"
+;
+# EX who killed Cock Robbin?
+# EX who are you?
+# EX who is that tall dark stranger in my bedroom?
+    LEX_QPRON(gen), opt subject(NUMB),
+       VOC phrase(NUMB, third), IT
+/         "{", IT, " ,SUCHTHAT [[", opt subject, ",of ", IT, "],", VOC phrase, "]}"
+;
+# EX whose idea was this?
+# EX whose children are you?
+# EX whose cat has eaten all the mice?
+    Whow, attr adjectives,
+       auxverb(NUMB, PERS), subject(NUMB, PERS),
+          copula(infi)
+/            "{", attr adjectives, ",SUCHTHAT [", subject,
+                ",ATTR ", attr adjectives, copula, "]}"
+# EX how stupid can you get?
+;
+    LEX_QPRON(nom), preposition(of), noun phrase(NUMB1,PERS1,dat),
+        VOC phrase(NUMB, third)
+/            "{QUESTION ", noun phrase, ",", VOC phrase, "}"
+# EX which of the boys is the guilty one?
+;
+# -----
+    LEX_QPRON(gen), pref object, vSv part(TRAN, none, PREP),
+      CnO phrase(PREP)
+/           "{P:it ,SUCHTHAT [", vSv part, pref object, CnO phrase, "]]}"
+;
+# EX whose cat have you held over a barrel?  #kan beter
+# EX whose have you chosen?
+# -----
+    LEX_QPRON(dat), opt complement, copula(NUMB, PERS), subject(NUMB,PERS),
+       some preposition(in)  # locative is frequent, others allowed
+/        "{", opt complement, ",SUCHTHAT [", subject, ",|",
+             some preposition, " ", opt complement, "]}"
+;
+# EX what city are we in?
+# EX what is it for?
+    LEX_QPRON(gen), opt complement, copula(NUMB, PERS), subject(NUMB,PERS),
+      some preposition(in)
+/           "{QUESTION ", subject, ",|", some preposition, " ",
+                 opt complement, "}"
+;
+# EX whose house are you in?
+    LEX_QPRON(dat), opt complement, vSv part(TRAN, PART, XPREP),
+       OC phrase(TRAN, PART,none), some preposition(XPREP)
+/           "{", opt complement, ",SUCHTHAT [", vSv part,
+               OC phrase, "|", some preposition, " ", opt complement, "]]}"
+;
+# EX whom do you give this present to?
+# EX what were they looking for?
+# EX whom do you give it back to?
+    some preposition(XPREP), LEX_QPRON(dat), opt complement, vSv part(TRAN,
+       PART, XPREP), OC phrase(TRAN,PART,none)
+/           "{", opt complement, ",SUCHTHAT [", vSv part,
+                OC phrase, "|", some preposition, " ", opt complement,
+             "]]}"
+;
+# EX in what state did he arrive?
+# EX to which side have you given your vote?
+# EX to whom did you give it back?
+    WHERE(PREP), vSv part(TRAN,PART, XPREP), OC phrase(TRAN, PART,PREP1), IT
+/       "{", IT, " ,SUCHTHAT [", vSv part, OC phrase, "|", PREP, IT, "]]}"
+;
+# EX wherein did he arrive?
+# EX whereupon does his case rest?
+    $PENALTY(2), LEX_QPRON(dat), opt focus, vSv part(ditr, none, to),
+       pref object
+/ "{", opt focus,",SUCHTHAT [", vSv part, pref object, "|to ",
+         opt focus, "]]}"
+;
+# EX which side have you given your vote?
+# -----
+    LEX_QPRON(acc), opt focus,
+       vSv part(trav, none, PREP),
+           CnO phrase(PREP)
+/"{", opt focus,",SUCHTHAT [", vSv part, ",OBJ ", opt focus, CnO phrase, "]]}"
+;
+# EX which cat have you held over a barrel in the garden?
+# EX what have we learned today?
+# EX which egg are you eating for breakfast?
+# EX what are you giving her for christmas?
+# EX whom do you want to eat for breakfast?
+    LEX_QPRON(acc), opt focus,
+        vSv part(ditr, none, to),
+           indirect object(to), opt circumstances
+/ "{", opt focus,",SUCHTHAT [", vSv part, ",OBJ ", opt focus,
+        indirect object, opt circumstances, "]]}"
+.
+# EX what do I give to you?
+# EX what do I give you?
+
+ OPTION opt subject(NUMB):
+    subject(NUMB, PERS)
+;
+    PRICE, IT
+.
+
+ OPTION opt complement:
+    noun part(NUMB, PERS, dat)
+;
+    PRICE, IT
+.
+
+ OPTION opt focus:
+    noun part(NUMB, PERS, acc)
+;
+    PRICE, IT
+.
+
+ xSpred phrase:
+    copula(NUMB, PERS), subject(NUMB, PERS), predicate
+/           subject, ",", predicate, copula
+# EX am I stupid
+# EX am I?
+# EX am I returning the lost book to its rightful owner?
+# EX am I giving it back to you?
+# EX is this sacrifice demanded from him?
+# EX was his absence accounted for?
+;
+    LEX_TOHAVE(NUMB, PERS), subject(NUMB, PERS),
+       copula(papl), predicate
+/           subject, ",", predicate, copula
+# EX have I been stupid again?
+# EX has IBM been sponsoring this conference?
+# EX has this conference been sponsored by IBM?
+.
+
+
+# EX the capital of Honduras was basking in the sun
+# EX he has given us so much
+# EX the end of the world was regularly prophesied to us
+# EX the solution to his problems was given to him
+
+ vSvOC phrase:
+    vSv part(TRAN, PART, PREP), OC phrase(TRAN, PART, PREP)
+/           vSv part, OC phrase, "]"
+.
+# EX can I live with myself?
+# EX what do I give to you?
+
+ vSv part(TRAN,PART,PREP):
+    LEX_TOBE(NUMB, PERS), subject(NUMB, PERS),
+       participle(TRAN, PART, PREP, prpl)
+/           subject, ",SUBJ [", participle
+# EX whom are you buying this present for?
+;
+    LEX_TOHAVE(NUMB, PERS), subject(NUMB, PERS),
+       participle(TRAN, PART, PREP, papl)
+/           subject, ",SUBJ [", participle
+# EX has IBM sponsored this conference?
+;
+    auxverb(NUMB, PERS), subject(NUMB, PERS),
+        infinitive(TRAN,PART,PREP)
+/           subject, ",SUBJ [", infinitive
+# EX what do I owe?
+.
+# EX what am I doing?
+# EX what am I looking for?
+# EX what have I done?
+# EX has harm been done?
+# EX have their children been provided for in the will?
+
+
+ CnO phrase(PREP):
+   pref PP(PREP), opt circumstances
+.
+
+#-------------------------ORDER--------------------------------#
+ order:
+    [neg], infinitive(TRAN,PART,PREP),
+       OC phrase(TRAN,PART,PREP), YOU
+/           "{", YOU, ", SUBJ[", infinitive, OC phrase, [], "]}"
+# EX give him tomorrow what he wants now!
+# EX do not believe everything you hear
+;
+    [neg], LEX_TOBE(infi), predicate, YOU
+/           "{", YOU, ",", predicate, [], "}"
+# EX be a dear
+# EX be not prepared!
+;
+    [neg], LEX_TOBE(infi), predicate,
+        coordinator(coo|sub), order, YOU
+/           "{", YOU, ",", predicate, "}", order
+ # EX be a dear and move away
+##;
+##    $PENALTY(6), LEX_INTERJ, [Wcomma], [NP], opt circumstances
+##/      "[", [], ",INTER ", LEX_INTERJ, opt circumstances, "]"
+### EX OK, John!
+.
+
+ neg:
+   "do not" / "|MOD not" ;
+   "don't" / "|MOD not" .
+
+#-------------------------SMALL FRY----------------------------------#
+
+OPTION opt circumstances:
+    [Wcomma], circumstance, [Wcomma],
+     opt circumstances
+/           circumstance, opt circumstances
+;
+.
+
+pref circumstances:
+     [Wcomma], circumstance, [Wcomma],
+     opt circumstances
+/           circumstance, opt circumstances
+;
+     $PENALTY
+.
+
+ circumstances:
+    circumstance, opt circumstances.
+
+ circumstance:
+   coordinator(sub|loc), statement
+;
+# EX although the flesh is willing, the spirit is weak .
+# EX my heart jumps up whenever I see you
+    PRICE, adverb(modf)
+/          "|MOD ", adverb
+# EX I saw him twice
+# EX I saw him next morning
+;
+    time phrase , BONUS, BONUS
+/   "|MOD ", time phrase
+# EX the boat arrives tonight
+;
+    PRICE, PP
+# EX I saw him in the parade
+# EX this is too good to be true
+.
+# EX to see it you must climb on the roof
+# EX I climbed on the roof in order to see better
+
+#/---------------------------QUANTITY-----------------------------#
+
+ quantity:
+   adverb(quant), quantity
+/    "[", quantity, ",MOD ", adverb, "]"
+# EX the terrorists used at least 12 kilogrammes of TNT
+;
+   LEX_NUM(card), [Wto,  LEX_NUM(card)], [DIMENSION], [unitshift]
+# EX we used ion sputtering at 400 to 560 Volts
+.
+
+ unitshift:
+   Wdiv, noun(sing)
+# EX the concentration was assayed at 300 mumol / l acetaldehyde
+;
+   "a", noun(sing)
+# EX it costs 12 cents a bottle
+;
+   "per", noun(sing)
+.
+# EX The standard dose is 12 mg Aspirine per kilogram
+
+#---------------------------TIME---------------------------------#
+
+ time phrase:
+   time, [time phrase]
+.
+
+ time:
+    adverb(temp), BONUS
+;
+    Wfrom, date, Wto, date
+;
+    Wbetween, date, Wand, date
+;
+    "until", (date; time NP)
+# EX I stayed until the last day
+;
+    preposition(TPREP), (date; time NP)
+# EX The government is expected to pick a winner by April 30 .
+.
+
+ TPREP:: in | to | from | at | on | by | after | around |
+   about | toward | between | before | for .
+
+ time NP:
+     [LEX_DET(NUMB)], [article(NUMB)], time nounpart
+# EX all the week he was ill
+;
+     LEX_NUM(card), time nounpart, [adverb(temp)]
+# EX the storm lasted eight days
+.
+
+ time nounpart:
+     LEX_DET(NUMB), time nounpart
+# EX this morning I had a headache
+;
+     time noun
+;
+     time noun, Wthat, statement
+/ time noun, statement
+# EX this happened during the period that she was in hospital ***
+;
+     time noun, PRICE, PRICE, statement
+/ time noun, statement
+# EX it happened the day he went to college
+;
+     LEX_ADJE(GRAD,none), time nounpart
+# EX all this happened last friday
+.
+
+ time noun:
+     LEX_TNOUN
+;
+     LEX_MONTH
+.
+
+#-------------------------MORPHOLOGY---------------------------#
+# or, rather, interface to the lexicon #
+
+
+ OPTION opt adverbs:
+    [Wcomma], adverb(modf), opt adverbs, [Wcomma]
+/       "|MOD ", adverb, opt adverbs
+;
+.
+
+ adverb(ADVT):
+    $PENALTY, LEX_ADVB(ADVT), coordinator(coo), adverb(ADVT)
+/        LEX_ADVB, "|MOD ", adverb
+# EX he did it cleverly and correctly
+.
+
+ adverb(modf):
+    LEX_ADVB(modf), BONUS
+;
+      LEX_ADVB(intens)
+;
+      Wmore, LEX_ADVB(intens), adverb comparison, BONUS
+/    "[more ", LEX_ADVB, ",THAN ", adverb comparison, "]"
+;
+        LEX_ADVB(comp), adverb comparison, BONUS
+/    "[", LEX_ADVB, ",THAN ", adverb comparison, "]"
+# EX Lucky Luke is the cowboy that shoots faster than his shadow
+.
+
+ adverb(intens):  LEX_ADVB(intens), BONUS.
+ adverb(quant):  LEX_ADVB(quant), BONUS.
+ adverb(post):  LEX_ADVB(post), BONUS.
+ adverb(comp):  LEX_ADVB(comp), BONUS.
+ adverb(temp):  LEX_ADVB(temp), BONUS.
+
+ adverb comparison:
+    Wthan, adverb(ADVT)
+/ adverb
+# EX it went a lot faster than before
+;
+    Wthan, NP(CASE)
+/ NP
+# EX he did it more cleverly than John
+;
+    Wthan, SVOC phrase
+/ "[", SVOC phrase, "]"
+# EX I can jump higher than Jack can throw a stone
+.
+
+ some preposition(XPREP):
+    LEX_PREPOS(XPREP), BONUS
+;
+    LEX_PREPOS(XPREP1), PRICE
+.
+
+ preposition(XPREP):
+    LEX_PREPOS(XPREP), BONUS
+.
+
+ article(NUMB):
+    LEX_ART(NUMB), BONUS, BONUS
+.
+
+ particle(none):
+.
+
+ particle(XPART):
+    LEX_PARTICLE(XPART), BONUS, BONUS, BONUS
+/
+.
+
+#---------------------------VERB FORMS-----------------------
+
+RULE verb form(TRAN, PART, PREP, NUMB, PERS).
+
+verb form(trav, PART, PREP, NUMB, PERS):
+    verb form(trav, PART, PREP, NUMB, PERS), coordinator(coo),
+       verb form(trav, PART, PREP, NUMB, PERS), [Wcomma]
+/  "[", verb form.1, "|", verb form.2, "]"
+# EX he knew and approved of the arrangement
+;
+    verb form(intr, PART, XPREP, NUMB, PERS),
+      preposition(XPREP), coordinator(coo),
+       verb form(trav, PART, PREP, NUMB, PERS), [Wcomma]
+/  "[", verb form.1, "|", verb form.2, "]"
+.
+# EX they will determine whether officials knew of, or condoned, secret payments
+
+verb form(TRAN, PART, PREP, NUMB, PERS):
+    adverb(modf), verb form(TRAN, PART, PREP, NUMB, PERS)
+/     "[", verb form, ",MOD ", adverb, "]"
+# EX I will forever love you
+# EX the authors therefore decided to develop a study
+.
+
+verb form(TRAN, PART, PREP, NUMB, PERS):
+   verb form(TRAN, PART, PREP, NUMB, PERS), circumstance
+/     "[", verb form, ",", circumstance, "]"
+# EX I saw in him my saviour 
+.
+
+verb form(TRAN,none,PREP,sing,first):
+    LEX_VERBI(PREP, TRAN, XPART), particle(XPART)
+;
+    LEX_VERBI(PREP, TRAN), $PENALTY
+.
+
+verb form(TRAN,none,PREP,NUMB,secnd):
+    LEX_VERBI(PREP, TRAN, XPART), particle(XPART)
+;
+    LEX_VERBI(PREP, TRAN), $PENALTY
+.
+
+verb form(TRAN,none,PREP,sing,third):
+    LEX_VERBS(PREP, TRAN, XPART), particle(XPART)
+;
+    LEX_VERBS(PREP, TRAN), $PENALTY
+.
+
+verb form(TRAN,none,PREP,plur,first|third):
+    LEX_VERBI(PREP, TRAN, XPART), particle(XPART)
+;
+    LEX_VERBI(PREP, TRAN), $PENALTY
+.
+
+verb form(TRAN,none,PREP,NUMB,PERS):
+    LEX_VERBV(PREP, TRAN, XPART), particle(XPART)
+;
+    LEX_VERBV(PREP, TRAN), $PENALTY
+.
+
+verb form(TRAN,XPART,PREP,sing,first):
+    LEX_VERBI(PREP, TRAN, XPART)
+.
+
+verb form(TRAN,XPART,PREP,NUMB,secnd):
+    LEX_VERBI(PREP, TRAN, XPART)
+.
+
+verb form(TRAN,XPART,PREP,sing,third):
+    LEX_VERBS(PREP, TRAN, XPART)
+.
+
+verb form(TRAN,XPART,PREP,plur,first|third):
+    LEX_VERBI(PREP, TRAN, XPART)
+.
+
+verb form(TRAN,XPART,PREP,NUMB,PERS):
+    LEX_VERBV(PREP, TRAN, XPART)
+.
+
+RULE verb form(TRAN,PART,PREP,TENS).
+
+verb form(TRAN, PART, PREP, TENS):
+    adverb(modf), verb form(TRAN, PART, PREP, TENS)
+/     "[", verb form, ",MOD ", adverb, "]"
+# EX you will see at once the progress made #*
+.
+
+verb form(TRAN, PART, PREP, TENS):
+    verb form(TRAN, PART, PREP, TENS), circumstance
+/     "[", verb form, ",", circumstance, "]"
+# EX I can see in my mind the walls of Troja 
+.
+
+verb form(TRAN,none,PREP,infi):
+    LEX_VERBI(PREP, TRAN, XPART), particle(XPART)
+;
+    LEX_VERBI(PREP, TRAN)#, $PENALTY
+.
+
+verb form(TRAN,none,PREP,prpl):
+    LEX_VERBG(PREP, TRAN, XPART), particle(XPART)
+;
+    LEX_VERBG(PREP, TRAN)#, $PENALTY
+.
+
+verb form(TRAN,none,PREP,papl):
+    LEX_VERBP(PREP, TRAN, XPART), particle(XPART)
+;
+    LEX_VERBP(PREP, TRAN)#, $PENALTY
+.
+
+verb form(TRAN,XPART,PREP,infi):
+    LEX_VERBI(PREP, TRAN, XPART)
+.
+
+verb form(TRAN,XPART,PREP,prpl):
+    LEX_VERBG(PREP, TRAN, XPART)
+.
+
+verb form(TRAN,XPART,PREP,papl):
+    LEX_VERBP(PREP, TRAN, XPART)
+.
+
+infinitive(TRAN,PART,PREP):
+    [Wcomma], adverb(modf), [Wcomma], infinitive(TRAN, PART, PREP)
+/           "[", infinitive, ",MOD ", adverb, "]"
+;
+    verb form(TRAN, PART, PREP, infi)
+# EX it seems to come
+;
+    verb form(TRAX, PART, PREP,infi), to marker,
+          infinitive(TRAN, PART, PREP), PRICE
+/           verb form, "|", infinitive
+# EX he decided not to participate in the project
+;
+    LEX_TOBE(infi), participle(TRAN, PART, PREP, prpl)
+/           participle
+;
+    LEX_TOHAVE(infi), participle(TRAN, PART, PREP, papl)
+/           participle
+# EX it seems to have come
+;
+    LEX_TOHAVE(infi), LEX_TOBE(papl),
+       participle(TRAN, PART, PREP, prpl)
+/           participle
+;
+    LEX_TOHAVE(infi), adverb(modf), LEX_TOBE(papl),
+       participle(TRAN, PART, PREP, prpl)
+/          "[", participle, ",MOD ", adverb, "]"
+# EX to have sometimes been flying is all I desire
+.
+
+participle(TRAN,PART,PREP,TENS):
+  participle(TRAN,PART,PREP,TENS), coordinator(coo),
+      participle(TRAN,PART,PREP,TENS)
+/      "[", participle.1, "|", participle.2, "]"
+# EX the raising and lowering of the flag was a touching ceremony
+;
+    [Wcomma], adverb(modf), [Wcomma], participle(TRAN, PART, PREP, TENS)
+/           "[", participle, ",MOD ", adverb, "]"
+# EX I have always looked for her image
+;
+   [copula(prpl)], verb form(TRAN, PART, PREP, TENS)
+/           verb form
+# EX it comprised a handle being connected to the tubular shaft
+.
+
+participle(TRAN,PART,PREP,prpl):
+    LEX_TOHAVE(prpl), verb form(TRAN, PART, PREP, papl)
+/           verb form
+.
+# EX once having achieved his goal he returned to mediocrity
+
+#---------------------------COPULAS and AUXILIARIES---------------
+
+copula(NUMB, PERS):   # transduces only the modifiers
+    adverb(ADVT), copula(NUMB,PERS)
+/      "|MOD ", adverb, copula
+# EX he sometimes was not hungry  
+;
+    copula(NUMB,PERS), circumstance, PRICE #prefer other attachment
+/      copula, circumstance
+# EX he was in this case free of guilt
+;
+    LEX_TOBE(NUMB, PERS)
+/
+# EX their characters were all different
+;
+    copula(NUMB, PERS), to marker, copula(infi), BONUS
+/                copula.1, to marker, copula.2
+# EX I seem not to appear to be very hesitant
+;
+    verb form(TRAN,none,none,NUMB,PERS), to marker, copula(infi), BONUS
+/       to marker, copula
+# EX I prefer to remain polite
+# EX it was said by him to be correct #*
+;
+    auxverb(NUMB, PERS), copula(infi)
+# EX it does not seem correct to interfere
+# EX it used to be totally correct
+;
+    LEX_TOHAVE(NUMB, PERS), copula(papl)
+/     copula
+# EX it has not seemed preposterous
+;
+    LEX_TOBE(NUMB, PERS), copula(prpl)
+/     copula
+# EX he was only being difficult #*
+.
+
+ to marker:
+   adverb(modf), to marker
+/ "|MOD ",  adverb
+;
+   BONUS, Wto  /
+.
+
+ copula(sing,first): LEX_VERBI(none,link) /.
+
+ copula(NUMB,secnd): LEX_VERBI(none,link) /.
+
+ copula(sing,third): LEX_VERBS(none,link) /.
+
+ copula(plur,first|third): LEX_VERBI(none,link) /.
+
+ copula(NUMB,PERS): LEX_VERBV(none,link) /.
+
+ copula(TENS):        # transduces only the modifiers
+    adverb(modf), copula(TENS), $PENALTY
+/    copula, "|MOD ", adverb
+.
+
+ copula(prpl):
+    LEX_TOBE(prpl)
+/
+;
+    LEX_VERBG(none,link)
+/
+.
+
+ copula(papl):
+    LEX_TOBE(papl)
+/
+;
+    LEX_VERBP(none,link)
+/
+.
+
+ copula(infi):
+    LEX_TOBE(infi)
+/
+;
+    LEX_VERBI(none,link)
+# EX I do not like to seem prudent
+/
+;
+    copula(infi), to marker, copula(infi)
+;
+# EX that did not seem to be correct
+    LEX_TOHAVE(infi), copula(papl)
+/      copula
+# EX I seem to have been optimistic
+.
+
+### EX it sometimes is prudent to step back
+### EX that is prudent
+### EX she was always laughing
+### EX the wise man has everything he needs  #*
+
+ auxverb(NUMB,PERS):   # transduces only the modifiers
+    adverb(modf), auxverb(NUMB,PERS)
+/      auxverb, "|MOD ", adverb
+# EX we sometimes can escape
+;
+    LEX_AUXV(NUMB, PERS), BONUS, BONUS
+/
+# EX you might however go now
+# EX I have to go now
+;
+    LEX_TOBE (NUMB,PERS), Wto, BONUS
+/
+# EX he was to be made emperor on the ides of March
+.
+
+#---------------------------DISCOURSE PARTICLES------------------
+
+coordinator(LEVEL):
+    [Wcomma], LEX_CON(LEVEL), [Wcomma] ,(PRICE, adverb(ADVT), [Wcomma]; )
+/
+.
+
+#-------------------------MISC EXAMPLES------------------
+
+# EX what were you trying to achieve
+# EX I talk the talk and I walk the walk
+# EX the winter storms were worst
+# EX the bread to be sliced smelled great
+# EX he was living in comfort, while they were dying of misery
+# EX the doctor came in, stinking of gin, and proceeded to lie on the table
+# EX analytical, simulation and statistical tools are employed
+# EX just take care of the pence and the pounds take care of themselves
+# EX it loomed large in his mind
+# EX it is this man whose book I return to you
+# EX it is this man whose book it was yesterday
+# EX the president was fruitlessly asked for clemency
+# EX it is clear what went wrong
+# EX he used soap to clean the diskette
+# EX all he does is clear
+# EX all he does is clear the house #*
+# EX he could be relied upon to do the stupidest things
+# EX the old guard dies but does not surrender
+# EX he was quick enough to arrive ahead of us
+# EX a subscription costs 200 $ per year
+# EX I saw the person spoken these words to
+# EX asphalt was used to cover the road
+# EX I would like someone to fight with
+# EX the end of the world is at hand
+# EX you have been made wise by suffering
+# EX you need a thief in order to catch a thief
+# EX it takes a thief to catch a thief
+# EX a man to love is better than nothing at all #*
+# EX the laminate is cooled and the copper foil peeled away #*
+# EX this conference is sponsored by IBM?
+# EX this conference is sponsored, by the way.
+# EX he ran away, crying, shouting and bleeding all over
+# EX we had a gun for shooting pigeons
+# EX there are three virtues: faith, hope and charity
+# EX the children of darkness are usually getting all the fun
+# EX my ears are frozen
+# EX they raised questions as to whether those statements could be relied upon
+# EX she was always in the kitchen
+# EX you can sometimes escape
+# EX he has not always been prudent
+# EX he is being prudent
+# EX you seem to be prudent
+# EX it was to be expected
+# EX he does not appear to have been prudent enough
+# EX it's bite can be dangerous
+# EX you did not hesitate to be prudent
+# EX it was not clear whether they were coming
+# EX I seem to have been optimistic
+# EX they toiled without success: the bird had died.
+# EX those statements can be relied on
+# EX they were carried away, shouting loudly
+# EX they were dehydrated with ethanol and covered with gold by ion sputtering
+
+# EX I used a towel to wipe my nose
+# EX he has nothing to live for
+# EX it was too late to flee from the seething flames
+# EX he was just a man
+# EX he sometimes sees hallucinations
+# EX he always knows
+# EX I saw the boy riding a horse

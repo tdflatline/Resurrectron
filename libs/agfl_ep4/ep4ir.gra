@@ -1,0 +1,100 @@
+# ----------------------------mod:EP4IR------------------------------#
+# $Id: npx.gra 708 2008-10-07 11:15:49Z olafs $
+# MEERTENS/KOSTER Affix Grammar for Basic English  #
+# original version 1962, updated 1991/1992         #
+# ADAPTED BY Everhard Ditters and Carole Tiberius  #
+# ADAPTED TO IR APPLICATIONS by Tjark Verhoeven    #
+# EXTENDED BY C.H.A. Koster for PHASAR application #
+
+# Copyright University of Nijmegen.                #
+#                                                  #
+#            Version 2.7                           #
+# using leftrecursion, and lexical frequencies     #
+
+GRAMMAR ep4ir.
+
+|word terminators " \t\n\r" |
+
+INCLUDES meta, sentence, interface, roman.
+
+LEXICON all, word
+DEFINES
+  WORD, WORD(TEXT), NAMEPREF,
+  ADJE(GRAD,PREP), ADJET(TEXT), ## ADJE_TO(GRAD),
+  ADVB(ADVT), ADVBT(TEXT,ADVT), INTERJ,
+  NOUN(NUMB), NOUN(NUMB,PREP), NOUNX(NUMB,CPLX),
+  NOUNTEMP, QNOUN, NOUNT(TRAD, NUMB), NOUNC(NUMB),
+  MONTH, NOUNP, DIMENSION,
+  VERBI(TRAD,PREP,TRAN), VERBS(TRAD,PREP,TRAN),
+  VERBV(TRAD,PREP,TRAN),
+  VERBG(TRAD,PREP,TRAN), VERBP(TRAD,PREP,TRAN),
+  VERBI(TRAD,PREP,TRAN,PART), VERBS(TRAD,PREP,TRAN,PART),
+  VERBV(TRAD,PREP,TRAN,PART),
+  VERBG(TRAD,PREP,TRAN,PART), VERBP(TRAD,PREP,TRAN,PART),
+  PARTICLE(PART), AUXV(NUMB,PERS),
+  ART(NUMB), DET(NUMB), PREDET(NUMB), PAIRDET(TEXT),
+  PREPOS(PREP), PREPOST(TEXT,PREP), WHERE(PREP),
+  POSSPRON, GENPRON, PERSPRON(NUMB, PERS, CASE),
+  REFLPRON(NUMB,PERS), RELPRON(CASE), QPRON(CASE), CPRON,
+  TOBE(NUMB, PERS), TOBE(TENS),
+  TOHAVE(NUMB, PERS), TOHAVE(TENS),
+  NUM(TYPE), CON(LEVEL).
+
+
+ROOT line.
+
+ line:
+    sentence ;
+    fragment, [line] / fragment, "\n", [].
+
+ sentence:
+    statement, [Wperiod] / statement ;
+    question, Wquest / question ;
+    order, Wexcl / order!
+    IT, PP  #for titles / "{", IT, ",", PP, "}"
+# EX On the pursuit of hapiness
+;
+     coordinator(coo|loc|sub), sentence / sentence
+# EX the spirit is willing but the flesh is weak.
+;
+    LEX_INTERJ, [Wcomma], sentence / sentence
+;
+    Wquoteopen(INT), sentence, Wquoteclose(INT) / sentence
+# EX "You are acquainted with Monsieur Sandgoist, who lives there?"
+.
+
+ fragment:
+    $PENALTY(20), NP /     "[", NP, "]" ;
+    $PENALTY(10), punctuation / !
+    $PENALTY(25), WORD / "#SKIP: ", WORD !
+    $PENALTY(55), $OTHER / "#UNKN: ", $OTHER .
+
+#----------------------------ADMINISTRATIVE PARAMETERS-------------#
+
+ PRICE: $PENALTY(2) .
+
+ BONUS: $PENALTY(-2).
+
+#----------------------------mod:POS--------------------------------#
+
+# Generate an extra space to make really sure nothing gets glued to
+# the end (otherwise that happens with a noun + index).
+#spos: $POS / $POS, " " .
+#epos: / .
+
+# spos: $POS / $POS, "-" .
+# epos: $POS / $POS, " " .
+
+spos: .
+epos: .
+
+punctuation:
+   ":"; "-:"; ":-"; "-:-";
+   ";"; "-;"; ";-"; "-;-";
+   "("; "-("; "(-"; "-(-";
+   ")"; "-)"; ")-"; "-)-";
+   "["; "-["; "[-"; "-[-";
+   "]"; "-]"; "]-"; "-]-";
+   ","; "-,"; ",-"; "-,-";
+   "."; "-."; ".-"; "-.-".
+  

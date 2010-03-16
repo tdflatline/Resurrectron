@@ -1,0 +1,66 @@
+# $Id: meta.gra 708 2008-10-07 11:15:49Z olafs $
+
+#--------------------------mod:META SYNTAX-------------------------#
+
+NUMB:: sing | plur .
+
+PERS:: first | secnd | third .
+
+CASE:: nom | gen | dat | acc .
+
+TRAN:: aux | link | CPLX | intr | XTRAN .
+
+TRAX:: intr | trav.
+
+XTRAN:: trav | ditr .
+
+CPLX :: cplx | fincomp | ascomp | infcomp . # | whinfcomp .
+# fincomp for predicative adjectives is useless,
+# because it is never complete. At best indicates preference.
+
+PREP:: none | other| XPREP .
+
+XPREP:: without | to | from | at | of | on | by | into |
+  for | in | with | after | among | across | against | around |
+  about | through | over | toward | onto | under | along |
+  between | as | before | like | behind | up | down . # |out | off.
+
+# upon is mapped to on (by the lexicon)
+# amongst is mapped to among (by the lexicon)
+# towards is mapped to toward (by the lexicon)
+
+# PRP is PREP without of or none:
+
+PRP:: other | without | to | from | at | on | by | into |
+  for | in | with | after | among | across | against | around |
+  about | through | over | toward | onto | under | along |
+  between | as | before | like | behind .
+ 
+TENS:: infi | prpl | papl .
+
+GRAD:: fincomp | whinfcomp | pred | ATTR .
+
+ATTR::abso | comp | supl | post.
+
+TYPE::card | ord .
+
+## ADVT:: temp | post | quant | MOD.
+## MOD:: comp | sent | verb | manner .
+ADVT::  modf   # of verbs and sentences
+      | intens # of adjectives and adverbs
+      | quant  # of quantities
+      | post   # after adjective or adverb
+      | temp   # temporal
+      | comp.  # adverb followed by comparison.
+
+LEVEL:: coo| sub| loc | temp |quest.
+
+PART::none | XPART .
+
+XPART::about | abroad | across | ahead | along | apart | around | again |
+    aside | away | back | behind | by | down | forth | forward | home |
+    in | off | on | out | over | round | through | to | together |
+    under | up | before | for .
+
+TRAD::TEXT .
+

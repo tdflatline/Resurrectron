@@ -1,0 +1,634 @@
+GRAMMAR interface.
+
+ # $Id: interface.gra 708 2008-10-07 11:15:49Z olafs $
+ # INTERFACE TO EP4IR LEXICON
+ # This is the place to link to other lexica
+ # or to link to lexica with a different tagset
+
+INCLUDES meta, roman.
+
+ # ------------------------------------------------ADJ
+
+ LEX_ADJE(GRAD,PREP): spos, LADJE(GRAD,PREP), epos
+/ "A:", LADJE, spos, epos.
+
+ LADJE(GRAD,PREP):
+    ADJE(GRAD,PREP) ;
+    ADJET(TRAD), BONUS, {GRAD::abso}, {PREP::none}
+      / TRAD, " "
+ # EX whitecollar should preferably be spelled white collar
+;
+    LEX_NUM(ord), {GRAD::abso}, {PREP::none}
+;
+ # EX we left on the seventh
+    PRICE, PRICE, robust adje(GRAD), {PREP::none}
+/ "R:", robust adje .
+
+ robust ADJ: robust adje(abso).
+
+ robust adje(abso):
+    hyphenated form
+ # EX that was my never-do-well nephew
+ # EX he is not a cabbage-eating man
+ # EX she wore a moth-eaten mink coat
+;
+    $SKIP("[a-z]...*([ai]ble|a[clr]|ary|ate|form|fold|ic|i[lv]e|like|oid|ory|ous|tic|wise|less)")
+##; PRICE, PRICE, prefix, ADJE(GRAD,PREP)
+.
+
+ hyphenated form:
+    $MATCH("[a-zA-Z0-9]+(-[a-zA-Z0-9]+)+").
+
+ # ------------------------------------------------ADVB
+
+ LEX_INTERJ:
+    spos, INTERJ, epos
+/ "X:", INTERJ, spos, epos
+;
+    PRICE, spos, number, epos, Wperiod  # numbering of points
+/
+.
+
+ LEX_ADVB(ADVT):
+    spos, LADVB(ADVT), epos
+/ "X:", LADVB, spos, epos.
+
+ LADVB(ADVT):
+    ADVB(ADVT)
+;
+    ADVBT(TRAD,ADVT) / TRAD, " "
+!
+    PRICE, PRICE, robust ADVB
+/ "R:", robust ADVB
+.
+
+ robust ADVB:
+    $MATCH("[-a-z]*ly")
+  #  more precise: adjective or participium glued to -ly
+.
+
+
+ # ------------------------------------------------AUXV
+
+ LEX_AUXV(NUMB,PERS):
+    AUXV(NUMB,PERS)
+.
+
+ # ------------------------------------------------ART
+
+ LEX_ART(NUMB):
+    ART(NUMB)
+.
+
+ # ------------------------------------------------NOUN
+
+ LEX_NOUN(NUMB,XPREP):
+   spos, NOUN(NUMB,XPREP), epos
+/ "N:", NOUN, spos, epos.
+
+ LEX_NOUNX(NUMB,CPLX):
+   spos, NOUNX(NUMB,CPLX), epos
+/ "N:", NOUNX, spos, epos.
+
+ LEX_NOUN(NUMB):
+    $PENALTY, LEX_TNOUN, {NUMB :: sing}
+;
+   spos, LNOUN(NUMB), [index], epos
+/ "N:", LNOUN, [], spos, epos
+.
+
+ LNOUN(NUMB):
+    Wquoteopen(INT), LNOUN(NUMB), Wquoteclose(INT)
+/    LNOUN
+# EX I do not need your "sympathy"
+;
+    NOUNC(NUMB), BONUS
+;
+    NOUNT(TRAD, NUMB) , BONUS / TRAD
+;
+    NOUN(NUMB)
+;
+#P    PROT;
+#P    UMLS ;
+   # thesauri still highly problematical
+    $PENALTY(2),
+        (MONTH;
+ # EX April is the cruellest month
+         LEX_TNOUN;
+         QNOUN)
+;
+    $PENALTY(2), company
+;
+    $PENALTY(8), 
+      (number ; name; DIMENSION)
+!
+    PRICE, PRICE, PRICE, robust noun(NUMB) /
+          "R:", robust noun
+.
+
+ robust NOUN: robust noun (NUMB).
+
+ robust NP:
+    spos, EC number, epos
+	/ "N:", EC number, spos, epos
+.
+
+ robust noun(sing):
+    $SKIP("[a-z]...*([aeiouy][dlmnrstx]e|[ao][lnr]|[tp]hy|[xc]y|gen|graph|i[adn]|ics|i[dt]y|ion|ium|is[mt]|mia|ma|meter|nce|ogue|ology|[stx]is|mus|my|ship|therapy|yl)") .
+
+ robust noun(plur):
+    $SKIP("[a-z]...*([aeiouy][dlmnrstx]es|[ao][lnr]s|cytes|ers|gens|graphs|ia|iae|ies|ions|iums|is[mt]s|i[dn]s|i[dt]ies|mata|morphs|nces|nts|ogues|ologies|ships|tions|yls)") .
+
+#  robust noun(NUMB):
+#     PRICE, PRICE, prefix, NOUN (NUMB).
+
+ EC number:
+      $MATCH("EC[.]? [0-9]+\.[0-9]+(\.[-0-9]+)*\.?")
+# EX EC 1.1.1.1.84
+# EX EC 1.10
+# EX EC 2.7.7.-
+# EX EC 2.7.1.37.
+.
+
+ company:
+    name, company ext
+.
+
+ company ext:
+     $MATCH("(inc|co|& co|corp|ltd)\.?").
+
+ name:
+    initial, name
+# EX A. J. Simpson was not found guilty
+;
+    rest name
+.
+
+ rest name:
+    element
+;
+    element, rest name
+;
+# EX Rhone Poulenc
+    element, "&", name
+;
+    element, "-&-", name
+;
+  element, "\-", rest name
+.
+
+ element:
+    initial
+;
+# EX They all worked for E.S.M.
+    "S.A." ; "N.V."; "G.m.b.H."
+;
+    NOUNP
+ ## ;
+ ## GNAME; TNAME; ONAME
+ ## moeten soorten N's worden
+;
+# abbreviations
+    $PENALTY(1), $MATCH("[A-Z][A-Za-z0-9]+")
+.
+
+ initial:
+    $MATCH("[A-Z]\.")
+;
+    $MATCH("[A-Z]\.-")
+.
+
+ # ------------------------------------------------TNOUN,MONTH
+
+ LEX_TNOUN:
+    spos, $MATCH("[0-9]+0s"), epos
+/
+    "N:", $MATCH, spos, epos
+# EX in the 70s the music was much better
+;
+    spos, NOUNTEMP, epos
+/
+    "N:", NOUNTEMP, spos, epos
+.
+
+ LEX_MONTH:
+   spos, MONTH, epos
+/
+    MONTH, spos, epos
+.
+
+ date:
+    $MATCH("[0-9][0-9]?:[0-9][0-9]")
+# EX The meeting started at 9:00 sharp
+;
+    [Wthe], LEX_NUM(ord), [Wof], MONTH
+# EX the 14th of July
+;
+    [Wthe], LEX_NUM(ord), "instant"
+# EX the 14th instant
+;
+    LEX_MONTH, dnumber,
+           pref comma, (year; )
+/   dnumber, LEX_MONTH, ()
+# EX January 12, 1942
+;
+     dnumber, LEX_MONTH,
+           [year]
+/   dnumber, LEX_MONTH, []
+# EX 12 January 1942
+.
+
+ dnumber:
+    $MATCH("[0-9]")
+;
+    $MATCH("1[0-9]")
+;
+    $MATCH("2[0-9]")
+;
+   $MATCH("3[0-1]")
+.
+
+ year:
+    $MATCH("1[0-9][0-9][0-9]")
+;
+    $MATCH("20[0-9][0-9]")
+;
+   $MATCH("'[0-9][0-9]")
+.
+
+ # ------------------------------------------------QNOUN
+
+ LEX_QNOUN:
+   spos, QNOUN, epos
+/
+    QNOUN, spos, epos
+.
+
+ # ------------------------------------------------PARTICLE
+
+ LEX_PARTICLE(PART):
+    PARTICLE(PART)
+.
+
+ # ------------------------------------------------VERB
+
+ LEX_VERBI(PREP,TRAN,PART):
+    spos, [PRICE, PRICE, prefix], VERBI(TRAD,PREP,TRAN,PART), epos
+##/ "V:", [], TRAD,PART, spos
+/ "V:", [], VERBI,PART, spos, epos
+.
+ LEX_VERBI(PREP,TRAN):
+    spos, [PRICE, PRICE, prefix], VERBI(TRAD,PREP,TRAN), epos
+##/ "V:", [], TRAD, spos, epos
+/ "V:", [], VERBI, spos, epos
+;
+    $PENALTY(8), spos, $SKIP("[a-z][a-z][a-z][a-z]*(ize|ise|ify|ate)"),
+      {PREP::none,TRAN::trav,PART::none}, epos
+/ "V:R:", $SKIP, spos, epos
+.
+
+ LEX_VERBS(PREP,TRAN,PART):
+    spos, [PRICE, PRICE, prefix], VERBS(TRAD,PREP,TRAN,PART), epos
+##/ "V:", [], TRAD,PART, spos
+/ "V:", [], VERBS,PART, spos, epos
+.
+ LEX_VERBS(PREP,TRAN):
+    spos, [PRICE, PRICE, prefix], VERBS(TRAD,PREP,TRAN), epos
+##/ "V:", [], TRAD, spos, epos
+/ "V:", [], VERBS, spos, epos
+;
+    $PENALTY(8), spos, $SKIP("[a-z][a-z][a-z][a-z]*(izes|ises|ifies|ates)"),
+      {PREP::none,TRAN::trav,PART::none}, epos
+/ "V:R:", $SKIP, spos, epos
+.
+
+ LEX_VERBV(PREP,TRAN,PART):
+    spos, [PRICE, PRICE, prefix], VERBV(TRAD,PREP,TRAN,PART), epos
+##/ "V:", [], TRAD,PART, spos, epos
+/ "V:", [], VERBV,PART, spos, epos
+.
+ LEX_VERBV(PREP,TRAN):
+    spos, [PRICE, PRICE, prefix], VERBV(TRAD,PREP,TRAN), epos
+##/ "V:", [], TRAD, spos, epos
+/ "V:", [], VERBV, spos, epos
+;
+    $PENALTY(8), spos, $SKIP("[a-z]...*[tlrnzsdkhpigmcvwyb]ed"), epos,
+      {PREP::none,TRAN::trav,PART::none}
+/ "V:", $SKIP, spos, epos
+.
+
+ LEX_VERBG(PREP,TRAN,PART):
+    spos, [PRICE, PRICE, prefix], VERBG(TRAD,PREP,TRAN,PART), epos
+/ "V:", [], VERBG,PART, spos, epos
+.
+ LEX_VERBG(PREP,TRAN):
+    spos, [PRICE, PRICE, prefix], VERBG(TRAD,PREP,TRAN), epos
+/ "V:", [], VERBG, spos, epos
+;
+   $PENALTY(8), spos, $SKIP("[a-z]...*[tlrnzdskyhpgmcvwb]ing"),
+      {PREP::none,TRAN::trav,PART::none}, epos
+/ "V:", $SKIP, spos, epos
+.
+
+ LEX_VERBP(PREP,TRAN,PART):
+    spos, [PRICE, PRICE, prefix], VERBP(TRAD,PREP,TRAN,PART), epos
+##/ "V:", [], TRAD,PART, spos, epos
+/ "V:", [], VERBP,PART, spos, epos
+.
+ LEX_VERBP(PREP,TRAN):
+    spos, [PRICE, PRICE, prefix], VERBP(TRAD,PREP,TRAN), epos
+/ "V:", [], VERBP, spos, epos
+;
+   $PENALTY(8), spos, $SKIP("[a-z]...*[tlrnzsdkhpigmcvwyb]ed"),
+      {PREP::none,TRAN::trav,PART::none}, epos
+/ "V:", $SKIP, spos, epos
+.
+
+ LEX_VERBI(none,cplx,none): VERBI(TRAD,none,cplx), $PENALTY(-2)
+/ TRAD .
+
+ LEX_VERBS(none,cplx,none): VERBS(TRAD,none,cplx), $PENALTY(-2)
+/ TRAD .
+
+ LEX_VERBP(none,cplx,none): VERBP(TRAD,none,cplx), $PENALTY(-2)
+/ TRAD .
+
+ LEX_VERBV(none,cplx,none): VERBV(TRAD,none,cplx), $PENALTY(-2)
+/ TRAD .
+
+ LEX_VERBG(none,cplx,none): VERBG(TRAD,none,cplx), $PENALTY(-2)
+/ TRAD .
+
+
+ LEX_VERBI(PREP,TRAN,PART):
+    Wquoteopen(INT), LEX_VERBI(PREP,TRAN,PART), Wquoteclose(INT)
+.
+
+ LEX_VERBP(PREP,TRAN,PART):
+    Wquoteopen(INT), LEX_VERBP(PREP,TRAN,PART), Wquoteclose(INT)
+.
+
+ LEX_VERBV(PREP,TRAN,PART):
+    Wquoteopen(INT), LEX_VERBV(PREP,TRAN,PART), Wquoteclose(INT)
+.
+
+ LEX_VERBG(PREP,TRAN,PART):
+    Wquoteopen(INT), LEX_VERBG(PREP,TRAN,PART), Wquoteclose(INT)
+.
+
+ LEX_VERBS(PREP,TRAN,PART):
+    Wquoteopen(INT), LEX_VERBS(PREP,TRAN,PART), Wquoteclose(INT)
+.
+
+
+ # ------------------------------------------------DETERMINER
+
+LEX_DET(NUMB):
+    spos, DET(NUMB), epos
+/
+    DET, spos, epos
+.
+LEX_PREDET(NUMB):
+    spos, PREDET(NUMB), epos
+/
+#    "X:", PREDET, spos, epos
+     PREDET, spos, epos
+.
+LEX_PAIRDET(TEXT):
+    spos, PAIRDET(TEXT), epos
+/
+    PAIRDET, spos, epos
+.
+
+
+ # ------------------------------------------------PREPOSITION
+
+ LEX_PREPOS(PREP):
+    PREPOS(PREP)
+;
+    PREPOST(TEXT, PREP), BONUS / TEXT, " " #multiword prepositions
+.
+
+ # ------------------------------------------------PRONOMINA
+
+ LEX_POSSPRON:
+    spos, POSSPRON, epos
+/   POSSPRON, spos, epos
+.
+
+ LEX_PERSPRON(NUMB, PERS, CASE):
+    spos, PERSPRON(NUMB, PERS, CASE), epos
+/   "P:", PERSPRON, spos, epos
+.
+
+ LEX_REFLPRON(NUMB,PERS):
+    REFLPRON(NUMB,PERS)
+.
+
+ LEX_GENPRON:
+    spos, GENPRON, epos
+/
+    GENPRON, spos, epos
+.
+
+ LEX_CPRON:
+    CPRON
+.
+
+ LEX_RELPRON(CASE):
+    spos, RELPRON(CASE), epos
+/
+    RELPRON, spos, epos
+.
+
+ LEX_QPRON(CASE):
+    QPRON(CASE)
+.
+
+ # ------------------------------------------------TO BE/HAVE
+
+ LEX_TOBE(NUMB, PERS):
+    TOBE(NUMB, PERS)
+.
+ LEX_TOBE(TENS):
+    TOBE(TENS)
+.
+
+ LEX_TOHAVE(NUMB, PERS):
+    TOHAVE(NUMB, PERS)
+.
+ LEX_TOHAVE(TENS):
+    TOHAVE(TENS)
+.
+
+ # ------------------------------------------------NUM
+
+ LEX_NUM(TYPE):
+    spos, NUM(TYPE), epos
+/
+    NUM, spos, epos
+.
+
+ LEX_NUM(ord):
+    spos, $MATCH("[0-9][0-9]*th"), epos
+/
+    $MATCH, spos, epos
+.
+
+ LEX_NUM(card):
+    spos, number, epos
+/
+    number, spos, epos
+;
+    $PENALTY(8), spos, roman number(NUMB), epos
+/
+    roman number, spos, epos
+.
+
+ number:
+   numeral, Wplus, number, BONUS;
+   numeral, Wminus, number, BONUS;
+   numeral, Wtimes, number, BONUS;
+   numeral, Wdiv, number, BONUS;
+   $PENALTY, numeral, [number]
+  # EX GM stocks rose 2 1/2 points
+;
+   $MATCH("[$£]-"), numeral 
+.
+
+ numeral:
+    $MATCH("[-+]?[0-9]+")
+  # EX 4711 is my favourite eau de Cologne
+;
+   numeral, "-,-", $MATCH("[0-9][0-9]*")
+/  numeral, $MATCH
+  # EX at the last count, the population was 4,403,197
+;
+    numeral, $MATCH("-\.[0-9][0-9]*")
+/  numeral, $MATCH
+  # EX the interest rate was +12.7 %
+  # EX pi equals 3.1415
+;
+    $MATCH("[-+]?\.[0-9]+")
+  # EX multiply that by .7!
+.
+
+ # -------------------- indices --------------------------------------------
+
+ index:
+    roman number(NUMB), [indextail]
+!
+    $MATCH("[a-zA-Z][0-9]*"), [indextail]
+  # EX the error occurred in paragraph A
+  # EX look at paragraph b1
+;
+   $MATCH("[-+]?[0-9]+"), [indextail]
+ # EX omega 3 fatty acids abound
+;
+   "alpha"; "beta"; "gamma"; "bis"; indextail
+.
+
+ indextail:
+   $PENALTY(3), 
+       ("'", [indextail];
+       "-'", [indextail])
+;
+   $PENALTY(3), 
+        ("\"", [indextail] / "''", [];
+        "-\"", [indextail] / "''", [])
+.
+   # avoiding quotes in output
+
+ # ------------------------------------------------CON
+
+ LEX_CON(LEVEL):
+    CON(LEVEL) .
+
+Wmore: "more" ; "less".
+Wthan: "than" .
+Wof: "of" .
+Wand: "and" .
+Wto: "to" .
+Wfrom: "from" .
+Wbetween: "between" .
+Whow: "how" .
+Wthat: "that".
+Wthe: "the".
+Wit: "it".
+
+Wquoteopen(INT), Wquoteclose(INT). # enforcing bracket matching.
+Wquoteopen(1): "\"" ; "\"-".
+Wquoteopen(2): "'" ; "`" ; "'-"; "`-".
+Wquoteopen(3): "''" ; "''-" ; "``"; "``-".
+Wquoteclose(1): "\"" ; "-\"".
+Wquoteclose(2): "'"; "-'".
+Wquoteclose(3): "''" ; "-''".
+
+Wsub: "[" ; "-[" ; "[-" ; "-[-" .
+Wbus: "]" ; "-]" ; "]-" ; "-]-" .
+Wopen: "(" ; "-(" ; "(-" ; "-(-" .
+Wcomma: "," ; "-," ; ",-" ; "-,-" .
+Wclose: ")" ; "-)" ; ")-" ; "-)-" .
+Waccent: "'"; "-'" .
+Waccent s: "'s"; "-'s" .
+Wquest: "?"; "-?".
+Wexcl:  "!"; "-!".
+Wperiod: "."; "-." .
+Wcolon: ":"; "-:".
+Wtimes: "times"; "*" ; "-*" ; "*-" ; "-*-" .
+Wplus: "plus"; "+" ; "-+" ; "+-" ; "-+-" .
+Wminus: "minus"; "-" ; "-\-" ; "--" .
+Wdiv: "divided by"; "/" ; "-/" ; "/-" ; "-/-" .
+
+ # ------------------------------------------------Placeholders
+
+IT:
+    spos, epos
+/
+    "P:it", spos, epos
+.
+
+YOU:
+    spos, epos
+/
+    "P:you", spos, epos
+.
+
+BE:
+    spos, epos
+/
+    "V:be", spos, epos
+.
+
+ prefix: "a1b2c3d4e5". #uitgeschakeld
+
+#     $MATCH("anti-?-") / "anti";
+#     $MATCH("carbo-?-") / "carbo";
+#     $MATCH("counter-?-") / "counter";
+#     $MATCH("contra-?-") / "contra";
+#     $MATCH("cross-?-") / "cross";
+#     $MATCH("electro-?-") / "electro";
+#     $MATCH("extra-?-") / "extra";
+#     $MATCH("hydro-?-") / "hydro";
+#     $MATCH("hyper-?-") / "hyper";
+#     $MATCH("inter-?-") / "inter";
+#     $MATCH("intra-?-") / "intra";
+#     $MATCH("micro-?-") / "micro";
+#     $MATCH("macro-?-") / "macro";
+#     $MATCH("mono-?-") / "mono";
+#     $MATCH("multi-?-") / "multi";
+#     $MATCH("non-?-") / "non";
+#     $MATCH("neuro-?-") / "neuro";
+#     $MATCH("over-?-") / "over";
+#     $MATCH("ortho-?-") / "ortho";
+#     $MATCH("para-?-") / "para";
+#     $MATCH("photo-?-") / "photo";
+#     $MATCH("poly-?-") / "poly";
+#     $MATCH("proto-?-") / "proto";
+#     $MATCH("psycho-?-") / "psycho";
+#     $MATCH("self-?-") / "self";
+#     $MATCH("super-?-") / "super";
+#     $MATCH("trans-?-") / "trans";
+#     $MATCH("thermo-?-") / "thermo";
+#     $MATCH("under-?-") / "under".
+

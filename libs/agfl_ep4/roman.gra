@@ -1,0 +1,58 @@
+# $Id: roman.gra 708 2008-10-07 11:15:49Z olafs $
+
+GRAMMAR roman.
+
+#---------------------------------- roman numbers ---------------
+
+roman number(NUMB).
+
+ roman number(sing):
+         "I", $PENALTY(5); "i".
+
+ roman number(plur):
+     plur roman cdu; "m-",roman cdu; "mm-",roman cdu; "mmm-",roman cdu;
+     "m"; "mm"; "mmm";
+     plur roman CDU; "M-",roman CDU; "MM-",roman CDU; "MMM-",roman CDU;
+     "M"; "MM"; "MMM".
+
+ plur roman cdu : roman cs; roman cent, roman du; plur roman du.
+
+ roman cdu : roman cs; roman cent, roman du; roman du.
+
+ roman cs : "c"; "cc"; "ccc"; "cd"; "d"; "dc"; "dcc"; "dccc";"cm".
+
+ roman cent : "c-"; "cc-"; "ccc-"; "cd-"; "d-"; "dc-"; "dcc-"; "dccc-";"cm-".
+
+ plur roman du : roman ds; roman dix, roman un; plur roman un.
+
+ roman du : roman ds; roman dix, roman un; roman un.
+
+ roman ds : "x"; "xx"; "xxx"; "xl"; "l"; "lx"; "lxx"; "lxxx"; "xc" .
+
+ roman dix : "x-"; "xx-"; "xxx-"; "xl-"; "l-"; "lx-"; "lxx-"; "lxxx-"; "xc-" .
+
+ plur roman un : "ii"; "iii";  "iv"; "v"; "vi"; "vii"; "viii"; "ix".
+
+ roman un : "i"; "ii"; "iii";  "iv"; "v"; "vi"; "vii"; "viii"; "ix".
+
+ plur roman CDU : roman Cs; roman Cent, roman DU; plur roman DU.
+
+ roman CDU : roman Cs; roman Cent, roman DU; roman DU.
+
+ roman Cs : "C"; "CC"; "CCC"; "CD"; "D"; "DC"; "DCC"; "DCCC";"Cm".
+
+ roman Cent : "C-"; "CC-"; "CCC-"; "CD-"; "D-"; "DC-"; "DCC-"; "DCCC-";"CM-".
+
+ plur roman DU : roman Ds; roman Dix, roman Un; plur roman Un.
+
+ roman DU : roman Ds; roman Dix, roman Un; roman Un.
+
+ roman Ds : "X"; "XX"; "XXX"; "XL"; "L"; "LX"; "LXX"; "LXXX"; "XC" .
+
+ roman Dix : "X-"; "XX-"; "XXX-"; "XL-"; "L-"; "LX-"; "LXX-"; "LXXX-"; "XC-" .
+
+ plur roman Un : "II"; "III";  "IV"; "V"; "VI"; "VII"; "VIII"; "IX".
+
+ roman Un : "I"; "II"; "III";  "IV"; "V"; "VI"; "VII"; "VIII"; "IX".
+
+
