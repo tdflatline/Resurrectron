@@ -70,7 +70,10 @@ class EP4irParseTree:
 
       if not word:
         print "Word blank for leaf: "+str(l)
-        return None # XXX: this happens.
+        # XXX: Some words have weird tags...
+        # leave them for nltk.pos_tag()
+        tags.append((tag, ""))
+        continue
 
       # XXX: AGFL sucks at labeling #'s
       if word.isdigit():

@@ -108,12 +108,15 @@ porter = nltk.PorterStemmer()
 #    - If no specific noun/verb is found, use these for query
 #  - associate per @msg user
 #  - Expire after a while. Exponential backoff?
+#    - Possibly keep appending these keywords to queries
 class ConversationContext:
   pass
 
 #- Knowledge Base:
 #  - Subsitute @msgs: I/Me->You, Mine->Yours, My->Your
-#  - Tag with sender @name as hidden text, add to list of tweets for searching
+#  - Tag with sender @name as hidden text
+#  - Maintain internal list of tweets for searching
+#  - Compare scores to other tweet lists
 class KnowledgeBase:
   pass
 
@@ -200,6 +203,7 @@ class SearchableTextCollection:
     self.needs_update = True
     if update: self.update_matrix()
 
+  # XXX: Hrmm.. this is not removing the entry?
   def remove_text(self, text, update=False):
     try:
       self.texts.remove(text)
@@ -241,6 +245,7 @@ class SearchableTextCollection:
     query_text = SearchableText(query_string, strip=True)
 
     print "Building Qvector.."
+    # XXX: normalize query
     # XXX: Hrmm, could amplify nouns and dampen adjectives and verbs:
     # Normalize to 0.75*(max_noun/max_word)
     # FIXME: If no nouns, only pronouns, use state from queries+responses
@@ -328,19 +333,20 @@ class SearchableTextCollection:
 # as a SearchableTextCollection.
 #
 # It also manages a separate worker thread for generating more pending tweets.
+# XXX: Encode some responses to "Are you a bot/human?" etc etc using hidden text.
+# XXX: also fun easter eggs like the xkcd bot captcha response
 class TwitterBrain:
-  def __init__(self, soul, pending_tweets=1500):
-    self.pending_goal = pending_tweets
+  def __init__(self, soul, pending_goal=1500):
     self.pending_tweets = SearchableTextCollection()
     self.already_tweeted = []
     self.remove_tweets = []
     for t in soul.tagged_tweets:
       words = map(lambda x: x[0], t)
       self.already_tweeted.append(set(words))
-    self.restart(soul)
+    self.restart(soul, pending_goal)
 
-  def restart(self, soul, pending_tweets=1500):
-    self.pending_goal = pending_tweets
+  def restart(self, soul, pending_goal=1500):
+    self.pending_goal = pending_goal
     self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
 
     self.work_lock = threading.Lock()
@@ -350,10 +356,19 @@ class TwitterBrain:
 
   def get_tweet(self, query=None):
     self.__lock()
-    if not query:
-      ret = random.choice(self.pending_tweets.texts)
-    else:
-      ret = self.pending_tweets.query(query)
+    while True:
+      if not query:
+        ret = random.choice(self.pending_tweets.texts)
+        # FIXME: make set? hrmm. depends on if its a hash
+        # or pointer comparison.
+        if ret not in self.remove_tweets:
+          break
+      else:
+        ret = self.pending_tweets.query(query)
+        # XXX: We can't redo this. It always returns
+        # the same value.. We could store a timestamp,
+        # and expire it after a certain age.. 10 seconds?
+        break
     self.remove_tweets.append(ret)
     self.already_tweeted.append(set(ret.tokens))
     self.__unlock()
@@ -393,19 +408,22 @@ class TwitterBrain:
     first_run = True
     while not self._shutdown:
       added_tweets = False
-      if len(self.remove_tweets) > 0:
+      if len(self.remove_tweets) > 15:
         self.__lock()
         while len(self.remove_tweets) > 0:
           self.pending_tweets.remove_text(self.remove_tweets.pop())
         self.pending_tweets.update_matrix()
         self.__unlock()
 
+      # XXX: Need low watermark. Maybe goal-100?
       while len(self.pending_tweets.texts) < self.pending_goal:
         (tweet,tokens,tagged_tokens) = self.voice.say_something()
         if len(tweet) > 140: continue
 
         self.__lock()
 
+        # XXX: Need to check pending tweets for uniqueness too!
+        # Maybe should make less of them..
         if self.__did_already_tweet(set(tokens)):
           self.__unlock()
           continue
@@ -465,7 +483,6 @@ def main():
     print "No brain file found. Regenerating."
     brain = TwitterBrain(soul)
     BrainReader.write(brain, open("target_user.brain", "w"))
-
 
   while True:
     query = raw_input("> ")
