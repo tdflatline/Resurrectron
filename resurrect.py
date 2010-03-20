@@ -278,14 +278,13 @@ class SearchableTextCollection:
     print "Qvector built"
     return q
 
-  # XXX: Exclude is not working
   def query_string(self, query_string, exclude=[], max_len=140,
                    randomize_top=1):
     if not query_string:
       print "Empty query!"
       return random.choice(self.texts)
     return self.query_vector(self.score_query(query_string), exclude, max_len,
-                      randomize_top)[1]
+                      randomize_top)
 
   def query_vector(self, query_vector, exclude=[], max_len=140,
                    randomize_top=1):
@@ -395,6 +394,9 @@ class TwitterBrain:
     self._thread = threading.Thread(target=self.__phrase_worker)
     self._thread.start()
 
+  # FIXME: We should normalize for tense agreement.
+  # http://nodebox.net/code/index.php/Linguistics
+  # en.is_verb() with en.verb.tense() and en.verb.conjugate()
   def get_tweet(self, msger=None, query=None):
     self.__lock()
     if msger and msger not in self.conversation_contexts:
@@ -402,6 +404,12 @@ class TwitterBrain:
     max_len = 140
     if query:
       if msger:
+        # FIXME: Also add meronyms to this list with
+        # en.is_noun and en.noun.meronym()..
+        # And possibly antonyms too..
+        # http://nodebox.net/code/index.php/Linguistics
+        # Also normalize with en.spelling() first
+        # All this probably should be done in SearchableText
         query = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query)))
         max_len -= len("@"+msger+" ")
         qvect = self.conversation_contexts[msger].decay_query(
@@ -414,8 +422,10 @@ class TwitterBrain:
                                       max_len=max_len)
         self.conversation_contexts[msger].remember_query(rvect*0.25)
       else:
+        # XXX: We should remember this too, so that when people
+        # @msg us there is context.
         query = word_detokenize(self.raw_normalizer.normalize_tokens(word_tokenize(query)))
-        ret = self.pending_tweets.query_string(query,
+        (rvect, ret) = self.pending_tweets.query_string(query,
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
     else:

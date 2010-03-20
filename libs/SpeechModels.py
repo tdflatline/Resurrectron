@@ -361,6 +361,8 @@ class PhraseGenerator:
         traceback.print_exc()
         return
 
+  # FIXME: Can use en.noun.article() instead:
+  # http://nodebox.net/code/index.php/Linguistics
   def hack_grammar(self, tokens):
     # "a/an",
     for i in xrange(len(tokens)-1):
