@@ -78,7 +78,8 @@ class TreebankWordTokenizer(TokenizerI):
         for regexp in self.CONTRACTIONS3:
             text = regexp.sub(r'\1 \2 \3', text)
 
-        # Separate most punctuation. XXX: Hrmm.. hash tags...
+        # Separate most punctuation.
+        # XXX: + and &?
         text = re.sub(r"([^\w\.\-\'\/,\:\*\@\#])", r' \1 ', text)
 
         # Separate :'s if they are not followed by // (urls)
@@ -152,9 +153,9 @@ def word_detokenize(tokens):
 
 def main():
   tok = TreebankWordTokenizer()
-  print tok.tokenize("Hi a-ok gmoney. www.foo.com? www.foo.com. www.goo.com/")
+  print tok.tokenize("Hi a-ok g+money I&I. www.foo.com? www.foo.com. www.goo.com/")
   print tok.detokenize(["25%", "predict", "a lot", "of", "G-Unit", "45%", "fashion"])
-  print tok.detokenize(tok.tokenize("I&u are teh best @ 7:30 pm 1:30. a-hi."))
+  print tok.detokenize(tok.tokenize("I&u are+teh best @ 7:30 pm 1:30. a-hi."))
 
 
 if __name__ == "__main__":

@@ -28,6 +28,9 @@ class TokenNormalizer:
                     "h8":"hate", "<3":"love", "thx":"thanks",
                     "teh":"the", "fb":"Facebook", "2nite":"tonight",
                     "ur" :"your",
+                    "w/o":"without", "w/":"with", "b/c":"because",
+                    "+":"and", "&":"and", "'em":"them",
+                    "til":"until", "'till":"until",
                     "ya":"you", "yah":"yes", #fishy
                     "i":"I", "y":"why", "o":"oh" }
 
@@ -245,11 +248,13 @@ class TokenNormalizer:
         ltoken = tokens[i].lower()
         # Model capitalization
         if ltoken in self.capital_words:
-          if not tokens[i].isupper() and tokens[i][0].isupper():
+          if (tokens[i] == "I" or not tokens[i].isupper()) \
+                   and tokens[i][0].isupper():
              self.capital_words[ltoken][0] += 1
           else:
              self.capital_words[ltoken][1] += 1
-        elif not tokens[i].isupper() and tokens[i][0].isupper():
+        elif (tokens[i] == "I" or not tokens[i].isupper()) \
+                   and tokens[i][0].isupper():
           self.capital_words[ltoken] = [1,0]
 
     tok_len = len(tokens)
@@ -298,8 +303,8 @@ class TokenNormalizer:
     else:
       cap_sentences = False
 
-    for i in xrange(tok_len):
-      if ret_tokens[i].upper(): continue
+    for i in xrange(len(ret_tokens)):
+      if ret_tokens[i] != "I" and ret_tokens[i].isupper(): continue
       ltoken = ret_tokens[i].lower()
 
       if ltoken in self.capital_words:
@@ -307,11 +312,9 @@ class TokenNormalizer:
         chance = chance/(chance+self.capital_words[ltoken][1])
         if random.random() < chance:
           ret_tokens[i] = ret_tokens[i][0].upper()+ret_tokens[i][1:]
-          print "Choosing to cap word: "+ret_tokens[i]
           continue
       if cap_sentences and (i==0 or curses.ascii.ispunct(ret_tokens[i-1][-1])):
         ret_tokens[i] = ret_tokens[i][0].upper()+ret_tokens[i][1:]
-        print "Choosing to cap sentence word: "+ret_tokens[i]
         continue
       ret_tokens[i] = ltoken
     return ret_tokens
@@ -321,7 +324,7 @@ class TokenNormalizer:
     # Does it make me disturbed that these are the first sentences that came
     # to mind? Somewhat troubling...
     strings = ["Hi there. Gonna getcha. I've decided you'll die tonight.",
-               "r u scared yet? Ill rip our ur guts.",
+               "r u scared yet? B/c Ill rip our ur guts.",
                "Whatcha up2? We're gonna go on a killing spree.",
                "Holy crap dood.",
                "Are you going out?",
