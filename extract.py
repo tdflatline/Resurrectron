@@ -25,7 +25,8 @@ from libs.tokenizer import word_tokenize, word_detokenize
 # Temporarily strip out stuff we left in (esp for AGFL)
 def agfl_fix(tokens, nltk_tags):
   fixed = False
-  # XXX: ["#", "*", "@", "/", "(^|$)'"]
+  # XXX: ["#", "*", "@", "/", "(^|$)'"] => " "
+  # ["[a-z]/[a-z]"] => " or "
   # XXX: Add these to normalizer? Nah. Just invert them after parsing
   for t in xrange(len(nltk_tags)):
     tokens[t] = re.sub(r"\.\.[\.]+", "...", tokens[t])

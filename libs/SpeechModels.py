@@ -27,7 +27,7 @@ class TokenNormalizer:
     self.mono_map = { "u":"you", "r":"are", "m":"am", "c":"see", "n":"and",
                     "h8":"hate", "<3":"love", "thx":"thanks",
                     "teh":"the", "fb":"Facebook", "2nite":"tonight",
-                    "ur" :"your",
+                    "ur" :"your", "dbag":"douche",
                     "w/o":"without", "w/":"with", "b/c":"because",
                     "+":"and", "&":"and", "'em":"them",
                     "til":"until", "'till":"until",
@@ -239,7 +239,7 @@ class TokenNormalizer:
       self.sentences_lowercase += 1
 
     for i in xrange(1,len(tokens)):
-      if curses.ascii.ispunct(tokens[i-1][-1]):
+      if tokens[i-1][-1] in "?.!": # FIXME: What about ":"
         if not tokens[i].isupper() and tokens[i][0].isupper():
           self.sentences_capitalized += 1
         else:
@@ -307,13 +307,14 @@ class TokenNormalizer:
       if ret_tokens[i] != "I" and ret_tokens[i].isupper(): continue
       ltoken = ret_tokens[i].lower()
 
+      # XXX: Hrmm. maybe we should have a seperate stat for ALL lowercase..
       if ltoken in self.capital_words:
         chance = float(self.capital_words[ltoken][0])
         chance = chance/(chance+self.capital_words[ltoken][1])
-        if random.random() < chance:
+        if chance > 0.75 or (chance > 0.334 and random.random() < chance):
           ret_tokens[i] = ret_tokens[i][0].upper()+ret_tokens[i][1:]
           continue
-      if cap_sentences and (i==0 or curses.ascii.ispunct(ret_tokens[i-1][-1])):
+      if cap_sentences and (i==0 or ret_tokens[i-1][-1] in ".?!"):
         ret_tokens[i] = ret_tokens[i][0].upper()+ret_tokens[i][1:]
         continue
       ret_tokens[i] = ltoken
@@ -429,9 +430,9 @@ class PhraseGenerator:
   def hack_grammar(self, tokens):
     # "a/an",
     for i in xrange(len(tokens)-1):
-      if tokens[i] == "a" and tokens[i+1][0] in ["aeuio"]:
+      if tokens[i] == "a" and tokens[i+1][0] in ["aeiouAEIOU"]:
         tokens[i] = "an"
-      elif tokens[i] == "an" and tokens[i+1][0] not in ["aeuio"]:
+      elif tokens[i] == "an" and tokens[i+1][0] not in ["aeiouAEIOU"]:
         tokens[i] = "a"
 
   def say_something(self, tagged_tokens=None):
