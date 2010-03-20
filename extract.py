@@ -47,10 +47,10 @@ nltk_ep4_map = {
   "RB" : "ADVB(modf)", # adverb
   "RBR" : "ADVB(comp)", # adverb, comparative
   "RBS" : "ADVB(supl)", # adverb, superlative
-  "RP" : "PARTICLE(none)", # particle
-  "JJ" : "ADJE(abso)", # adjective or numeral, ordinal 
-  "JJR" : "ADJE(comp)", # adjective, comparative
-  "JJS" : "ADJE(supl)", # adjective, superlative
+  "RP" : "PARTICLE(none)", # particle. XXX: these next 4 should have the word?
+  "JJ" : "ADJE(abso,none)", # adjective or numeral, ordinal 
+  "JJR" : "ADJE(comp,none)", # adjective, comparative
+  "JJS" : "ADJE(supl,none)", # adjective, superlative
   "CC" : "CON(coo)", # conjunction, coordinating
   "IN" : "CON(sub)", # preposition or conjunction, subordinating
   "UH" : "INTERJ", # interjection
@@ -133,6 +133,7 @@ class CorpusSoul:
   def __init__(self, directory):
     self.normalizer = TokenNormalizer()
     tagged_tweets = []
+    self.vocab = set([])
     for root, dirs, files in os.walk(directory):
       for f in files:
         # .jtwt: json-encoded twitter tweets, 1 per line
@@ -144,7 +145,9 @@ class CorpusSoul:
             txt = tweet['text'].encode('ascii', 'ignore')
             if re.search("( |^)RT(:| )", txt, re.IGNORECASE): continue
             if txt[0] == '@': txt = re.sub('^@[\S]+ ', '', txt)
-            tagged_tweet = pos_tag(self.normalizer.normalize_tokens(word_tokenize(txt)))
+            tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
+            self.vocab.update(tokens)
+            tagged_tweet = pos_tag(tokens)
             if tagged_tweet: tagged_tweets.append(tagged_tweet)
             print "Loaded tweet #"+str(len(tagged_tweets)) #+"/"+str(len(files))
         # .twt: plain-text tweets, 1 per line
@@ -154,7 +157,9 @@ class CorpusSoul:
             txt = tweet.encode('ascii', 'ignore')
             if txt.startswith('RT'): continue
             if txt[0] == '@': txt = re.sub('^@[\S]+ ', '', txt)
-            tagged_tweet = pos_tag(self.normalizer.normalize_tokens(word_tokenize(txt)))
+            tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
+            self.vocab.update(tokens)
+            tagged_tweet = pos_tag(tokens)
             if tagged_tweet: tagged_tweets.append(tagged_tweet)
             print "Loaded tweet #"+str(len(tagged_tweets)) #+"/"+str(len(files))
           pass

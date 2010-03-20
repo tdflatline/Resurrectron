@@ -72,6 +72,7 @@ class EP4irParseTree:
         print "Word blank for leaf: "+str(l)
         # XXX: Some words have weird tags...
         # leave them for nltk.pos_tag()
+        # XXX: This may be wrong..
         tags.append((tag, ""))
         continue
 

@@ -18,6 +18,7 @@ from tokenizer import word_tokenize, word_detokenize
 
 # FIXME: Can we do anything clever with "!1!1!1" and "?//?/1!/"? Maybe a regex?
 class TokenNormalizer:
+  # FIXME: these static maps should be class variables
   def __init__(self):
     # Tokens to remove entirely
     self.skip_tokens = set(['"','(',')','[',']'])
@@ -28,7 +29,7 @@ class TokenNormalizer:
                     "teh":"the", "fb":"Facebook", "2nite":"tonight",
                     "ur" :"your",
                     "ya":"you", "yah":"yes", #fishy
-                    "i":"I" }
+                    "i":"I", "y":"why" }
 
     # Make sure capital words are always capitalized for POS tag
     f = open("/usr/share/dict/words", "r")

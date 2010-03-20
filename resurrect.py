@@ -20,7 +20,7 @@ import traceback
 #import twitter
 
 from libs.tokenizer import word_tokenize, word_detokenize
-from libs.SpeechModels import PhraseGenerator
+from libs.SpeechModels import PhraseGenerator, TokenNormalizer
 from extract import CorpusSoul
 
 # Maybe pos-tag isn't that important for searching. It seems
@@ -56,7 +56,7 @@ class QueryStripper:
   def strip_tagged_query(cls, tagged_query):
     ret = []
     for t in tagged_query:
-      if t[1] not in cls.kill_pos:
+      if t[1] not in cls.kill_pos and not curses.ascii.ispunct(t[0][0]):
         ret.append(t)
     return ret
 
@@ -110,7 +110,27 @@ porter = nltk.PorterStemmer()
 #  - Expire after a while. Exponential backoff?
 #    - Possibly keep appending these keywords to queries
 class ConversationContext:
-  pass
+  def __init__(self, nick, decay=0.25):
+    self.nick = nick
+    self.normalizer = TokenNormalizer()
+    self.decay = decay
+    self.memory_vector = None
+
+  # XXX: Make this time based..
+  def decay_query(self, q_vector):
+    if self.memory_vector != None:
+      self.memory_vector *= self.decay
+      self.memory_vector += q_vector
+    else:
+      self.memory_vector = q_vector
+    return self.memory_vector
+
+  def remember_query(self, q_vector):
+    if self.memory_vector != None:
+      self.memory_vector += q_vector
+    else:
+      self.memory_vector = q_vector
+    return self.memory_vector
 
 #- Knowledge Base:
 #  - Subsitute @msgs: I/Me->You, Mine->Yours, My->Your
@@ -191,9 +211,11 @@ class SearchableText:
 # Then if tags and words match, you get more score than just tags,
 # but its not total fail if your question can't be parsed..
 class SearchableTextCollection:
-  def __init__(self, texts=[]):
+  def __init__(self, vocab, texts=[]):
     self._idf_cache = {}
     self.texts = texts
+    self.vocab = list(vocab)
+    self.vocab.sort()
     if texts:
       self.needs_update = True
       self.update_matrix()
@@ -214,13 +236,6 @@ class SearchableTextCollection:
       return
 
   def update_matrix(self):
-    print "Building Terms..."
-    terms = set()
-    for t in self.texts:
-      terms.update(t.vocab)
-    self.vocab = list(terms)
-    self.vocab.sort()
-    print "Built Terms."
     self.D = []
     for doc in self.texts:
       d = []
@@ -228,41 +243,55 @@ class SearchableTextCollection:
         if dt in doc.vocab: d.append(self.tf_idf(dt, doc))
         else: d.append(0.0)
       d = numpy.array(d)
-      d /= math.sqrt(numpy.dot(d,d))
+      norm = math.sqrt(numpy.dot(d,d))
+      # XXX: This happens. Why?
+      if norm <= 0:
+        print "Zero row in matrix: "+doc.text
+      else:
+        d /= math.sqrt(numpy.dot(d,d))
       self.D.append(d)
     print "Computed score matrix."
     self.needs_update = False
 
-  def query(self, query_string, randomize=False, only_pos=[]): #only_pos=["FW", "CD", "$", "N.*"]):
+  def score_query(self, query_string):
     if self.needs_update: self.update_matrix()
-
-    if not query_string:
-      print "Empty query!"
-      return random.choice(self.texts)
-
     query_string = PronounInverter.invert_all(query_string)
     print "Inverted Query: "+query_string
     query_text = SearchableText(query_string, strip=True)
 
     print "Building Qvector.."
-    # XXX: normalize query
-    # XXX: Hrmm, could amplify nouns and dampen adjectives and verbs:
+    # TODO: Hrmm, could amplify nouns and dampen adjectives and verbs:
     # Normalize to 0.75*(max_noun/max_word)
-    # FIXME: If no nouns, only pronouns, use state from queries+responses
+    # TODO: If no nouns, only pronouns, use state from queries+responses
     q = []
     for dt in self.vocab:
       if dt in query_text.vocab:
-        ok = not bool(only_pos)
-        for p in only_pos:
-          if re.match("/"+p, dt): ok = True
-        if ok: q.append(self.tf_idf(dt, query_text))
-        else: q.append(0.0)
+        print "Found in text: "+str(dt)
+        q.append(self.tf_idf(dt, query_text))
       else: q.append(0.0)
 
     q = numpy.array(q)
-    q /= math.sqrt(numpy.dot(q,q))
-
+    # Numpy is retarded here.. Need to special case 0
+    norm = math.sqrt(numpy.dot(q,q))
+    if norm > 0: q /= norm
+    else: print "Zero vector"
     print "Qvector built"
+    return q
+
+  # XXX: Exclude is not working
+  def query_string(self, query_string, exclude=[], max_len=140,
+                   randomize_top=1):
+    if not query_string:
+      print "Empty query!"
+      return random.choice(self.texts)
+    return self.query_vector(self.score_query(query_string), exclude, max_len,
+                      randomize_top)[1]
+
+  def query_vector(self, query_vector, exclude=[], max_len=140,
+                   randomize_top=1):
+    q = query_vector
+
+    print "Muliplying Matrix"
     scores = []
     tot_score = 0.0
     for d in self.D:
@@ -275,37 +304,44 @@ class SearchableTextCollection:
     # FIXME: hrmm. This will mess with our pronoun logic
     if tot_score == 0.0:
       print "Zero score.. Recursing"
-      return self.query(SearchableText("WTF buh uh huh dunno what talking about understand"),
-                        randomize, only_pos)
+      return self.query_string(
+              "WTF buh uh huh dunno what talking about understand",
+              exclude, max_len, randomize_top)
 
-    if randomize:
-      sorted_scores = []
-      for i in xrange(len(scores)):
-        sorted_scores.append((scores[i], i))
-      sorted_scores.sort(lambda x,y: int(y[0]*10000 - x[0]*10000))
+    sorted_scores = []
+    for i in xrange(len(scores)):
+      sorted_scores.append((scores[i], i))
+    sorted_scores.sort(lambda x,y: int(y[0]*10000 - x[0]*10000))
 
-      # Choose from top 5 scores..
-      # FIXME: This is still kind of arbitrary
-      top_quart = 0
-      count = 0.0
-      for i in xrange(5):
-        top_quart += sorted_scores[i][0]
-      choice = random.uniform(0, top_quart)
-      for i in xrange(5):
-        count += sorted_scores[i][0]
-        if count >= choice:
-          print "Rand score: "+str(sorted_scores[i][0])+"/"+str(sorted_scores[0][0])
-          print "Choice: "+str(choice)+" count: "+str(count)+" top_quater: "+str(top_quart)
-          return self.texts[sorted_scores[i][1]]
-      print "WTF? No doc found: "+str(count)+" "+str(tot_score)
-      return random.choice(self.texts)
-    else:
-      max_idx = 0
-      for i in xrange(len(scores)):
-        if scores[i] > scores[max_idx]:
-          max_idx = i
-      print "Max score: "+str(scores[max_idx])
-      return self.texts[max_idx]
+    i = 0
+    keep = 0
+    while keep < randomize_top:
+      # XXX: This is failing
+      if self.texts[sorted_scores[i][1]] in exclude or \
+         len(self.texts[sorted_scores[i][1]].text) > max_len:
+        print "Popping excluded tweet: "+self.texts[sorted_scores[i][1]].text
+        sorted_scores.pop(i)
+        continue
+      i += 1
+      keep += 1
+
+    # Choose from top 5 scores..
+    # FIXME: This is still kind of arbitrary
+    top_quart = 0
+    count = 0.0
+    for i in xrange(randomize_top):
+      top_quart += sorted_scores[i][0]
+    choice = random.uniform(0, top_quart)
+    for i in xrange(randomize_top):
+      count += sorted_scores[i][0]
+      if count >= choice:
+        print "Rand score: "+str(sorted_scores[i][0])+"/"+str(sorted_scores[0][0])
+        print "Choice: "+str(choice)+" count: "+str(count)+" top_quater: "+str(top_quart)
+        return (self.D[sorted_scores[i][1]],
+                    self.texts[sorted_scores[i][1]])
+    print "WTF? No doc found: "+str(count)+" "+str(tot_score)
+    # XXX: Get the correct vector for this
+    return (query_vector, random.choice(self.texts))
 
   def tf(self, term, text):
     """ The frequency of the term in text. """
@@ -336,16 +372,21 @@ class SearchableTextCollection:
 # XXX: Encode some responses to "Are you a bot/human?" etc etc using hidden text.
 # XXX: also fun easter eggs like the xkcd bot captcha response
 class TwitterBrain:
-  def __init__(self, soul, pending_goal=1500):
-    self.pending_tweets = SearchableTextCollection()
+  def __init__(self, soul, pending_goal=1500, low_watermark=1400):
+    # Need an ordered list of vocab words for SearchableTextCollection.
+    # If it vocab changes, we fail.
+    self.pending_tweets = SearchableTextCollection(soul.vocab)
     self.already_tweeted = []
     self.remove_tweets = []
     for t in soul.tagged_tweets:
       words = map(lambda x: x[0], t)
       self.already_tweeted.append(set(words))
-    self.restart(soul, pending_goal)
+    self.restart(soul, pending_goal, low_watermark)
+    self.conversation_contexts = {}
+    self.raw_normalizer = TokenNormalizer()
 
-  def restart(self, soul, pending_goal=1500):
+  def restart(self, soul, pending_goal=1500, low_watermark=1400):
+    self.low_watermark = low_watermark
     self.pending_goal = pending_goal
     self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
 
@@ -354,30 +395,58 @@ class TwitterBrain:
     self._thread = threading.Thread(target=self.__phrase_worker)
     self._thread.start()
 
-  def get_tweet(self, query=None):
+  def get_tweet(self, msger=None, query=None):
     self.__lock()
-    while True:
-      if not query:
+    if msger and msger not in self.conversation_contexts:
+      self.conversation_contexts[msger] = ConversationContext(msger)
+    max_len = 140
+    if query:
+      if msger:
+        query = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query)))
+        max_len -= len("@"+msger+" ")
+        qvect = self.conversation_contexts[msger].decay_query(
+                     self.pending_tweets.score_query(query))
+        # FIXME: Hrmm. need to somehow create proper punctuation
+        # based on both word content and position. Some kind
+        # of classifier? Naive Bayes doesn't use position info though...
+        (rvect, ret) = self.pending_tweets.query_vector(qvect,
+                                      exclude=self.remove_tweets,
+                                      max_len=max_len)
+        self.conversation_contexts[msger].remember_query(rvect*0.25)
+      else:
+        query = word_detokenize(self.raw_normalizer.normalize_tokens(word_tokenize(query)))
+        ret = self.pending_tweets.query_string(query,
+                                      exclude=self.remove_tweets,
+                                      max_len=max_len)
+    else:
+      while True:
         ret = random.choice(self.pending_tweets.texts)
         # FIXME: make set? hrmm. depends on if its a hash
         # or pointer comparison.
         if ret not in self.remove_tweets:
           break
-      else:
-        ret = self.pending_tweets.query(query)
-        # XXX: We can't redo this. It always returns
-        # the same value.. We could store a timestamp,
-        # and expire it after a certain age.. 10 seconds?
-        break
     self.remove_tweets.append(ret)
     self.already_tweeted.append(set(ret.tokens))
     self.__unlock()
-    return (ret.text, ret.tokens, ret.tagged_tokens)
+    if msger:
+      return ("@"+msger+" "+ret.text, ret.tokens, ret.tagged_tokens)
+    else:
+      return (ret.text, ret.tokens, ret.tagged_tokens)
 
   def __did_already_tweet(self, words, max_score=0.75):
     for t in self.already_tweeted:
       score = float(len(t & words))
       score1 = score/len(t)
+      score2 = score/len(words)
+      if score1 > max_score or score2 > max_score:
+        #print "Too similar to old tweet.. skipping: "+\
+        #         str(score1)+"/"+str(score2)
+        return True
+
+    # TODO: This maybe should be a function of the SearchableTextCollection
+    for text in self.pending_tweets.texts:
+      score = float(len(set(text.tokens) & words))
+      score1 = score/len(text.tokens)
       score2 = score/len(words)
       if score1 > max_score or score2 > max_score:
         #print "Too similar to old tweet.. skipping: "+\
@@ -408,35 +477,35 @@ class TwitterBrain:
     first_run = True
     while not self._shutdown:
       added_tweets = False
-      if len(self.remove_tweets) > 15:
+      if len(self.remove_tweets) > 10:
         self.__lock()
         while len(self.remove_tweets) > 0:
           self.pending_tweets.remove_text(self.remove_tweets.pop())
         self.pending_tweets.update_matrix()
         self.__unlock()
 
-      # XXX: Need low watermark. Maybe goal-100?
-      while len(self.pending_tweets.texts) < self.pending_goal:
-        (tweet,tokens,tagged_tokens) = self.voice.say_something()
-        if len(tweet) > 140: continue
+      # Need low watermark. Maybe goal-100?
+      if len(self.pending_tweets.texts) < self.low_watermark:
+        while len(self.pending_tweets.texts) < self.pending_goal:
+          (tweet,tokens,tagged_tokens) = self.voice.say_something()
+          if len(tweet) > 140: continue
 
-        self.__lock()
+          self.__lock()
 
-        # XXX: Need to check pending tweets for uniqueness too!
-        # Maybe should make less of them..
-        if self.__did_already_tweet(set(tokens)):
+          if self.__did_already_tweet(set(tokens)):
+            self.__unlock()
+            continue
+
+          self.pending_tweets.add_text(SearchableText(tweet,tokens,tagged_tokens),
+                             update=(not first_run))
+          added_tweets = True
           self.__unlock()
-          continue
 
-        self.pending_tweets.add_text(SearchableText(tweet,tokens,tagged_tokens),
-                           update=(not first_run))
-        added_tweets = True
-        self.__unlock()
-
-        if len(self.pending_tweets.texts) % 100 == 0:
-          # XXX: Cleanup filename
-          break # Perform other work
-      # XXX: This process is expensive:
+          if len(self.pending_tweets.texts) % \
+                (self.pending_goal-self.low_watermark) == 0:
+            # XXX: Cleanup filename
+            break # Perform other work
+        # XXX: This process is expensive:
       if added_tweets:
         print "At tweet count "+str(len(self.pending_tweets.texts))+\
                   "/"+str(self.pending_goal)
@@ -486,7 +555,11 @@ def main():
 
   while True:
     query = raw_input("> ")
-    (str_result, tokens, tagged_tokens) = brain.get_tweet(query)
+    if query:
+      (str_result, tokens, tagged_tokens) = brain.get_tweet("You", query)
+    else:
+      (str_result, tokens, tagged_tokens) = brain.get_tweet()
+
     print str_result
     print str(tagged_tokens)
 
