@@ -17,6 +17,8 @@ import curses.ascii
 import threading
 import time
 import traceback
+import cmd
+import sys
 #import twitter
 
 from libs.tokenizer import word_tokenize, word_detokenize
@@ -541,6 +543,21 @@ class BrainReader:
     brain = pickle.load(f)
     return brain
 
+class StdinLoop(cmd.Cmd):
+  prompt = "> "
+  def __init__(self,brain):
+    cmd.Cmd.__init__(self)
+    self.brain = brain
+  def onecmd(self, query):
+    if not query:
+      (str_result, tokens, tagged_tokens) = self.brain.get_tweet()
+    elif query == "q!" or query == "EOF":
+      print "Exiting Command loop."
+      sys.exit(0)
+    else:
+      (str_result, tokens, tagged_tokens) = self.brain.get_tweet("You", query)
+    print str_result
+    print str(tagged_tokens)
 
 def main():
   brain = None
@@ -563,15 +580,8 @@ def main():
     brain = TwitterBrain(soul)
     BrainReader.write(brain, open("target_user.brain", "w"))
 
-  while True:
-    query = raw_input("> ")
-    if query:
-      (str_result, tokens, tagged_tokens) = brain.get_tweet("You", query)
-    else:
-      (str_result, tokens, tagged_tokens) = brain.get_tweet()
-
-    print str_result
-    print str(tagged_tokens)
+  c = StdinLoop(brain)
+  c.cmdloop()
 
 if __name__ == "__main__":
   main()
