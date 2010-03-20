@@ -386,7 +386,7 @@ class PhraseGenerator:
 
       for i in xrange(1,len(tags)-1):
         tag = ""
-        for t in xrange(i-o, min(i+(l-o),len(tags)-1)):
+        for t in xrange(i-o, min(i+(l-o),len(tags))):
           tag += tags[t][1]+" "
 
         hmm_states.update(tag)
@@ -426,13 +426,12 @@ class PhraseGenerator:
 
   # FIXME: Can use en.noun.article() instead:
   # http://nodebox.net/code/index.php/Linguistics
-  # XXX: This doesn't seem to be working..
   def hack_grammar(self, tokens):
     # "a/an",
     for i in xrange(len(tokens)-1):
-      if tokens[i] == "a" and tokens[i+1][0] in ["aeiouAEIOU"]:
+      if tokens[i] == "a" and tokens[i+1][0] in "aeiouAEIOU":
         tokens[i] = "an"
-      elif tokens[i] == "an" and tokens[i+1][0] not in ["aeiouAEIOU"]:
+      elif tokens[i] == "an" and tokens[i+1][0] not in "aeiouAEIOU":
         tokens[i] = "a"
 
   def say_something(self, tagged_tokens=None):
