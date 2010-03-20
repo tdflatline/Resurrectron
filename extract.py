@@ -95,7 +95,7 @@ def agfl_repair(agfl_tags, nltk_tags):
           if nltk_tags[n][1] in nltk_ep4_map:
             agfl_tags[a] = (nltk_tags[n][0], nltk_ep4_map[nltk_tags[n][1]])
           else:
-            print nltk_tags[n][1]+" not in nltk map!"
+            #print nltk_tags[n][1]+" not in nltk map!"
             agfl_tags[a] = (nltk_tags[n][0], nltk_tags[n][1])
 
 agfl = libs.AGFL.AGFLWrapper()
@@ -110,7 +110,7 @@ def pos_tag(tokens):
       if not s:
         print "Empty string for: "+str(tokens)
         continue
-      print "Parsing: |"+s+"|"
+      #print "Parsing: |"+s+"|"
       agfl_tree = agfl.parse_sentence(s)
       if not agfl_tree:
         print "Parse fail for |"+s+"|"

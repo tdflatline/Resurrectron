@@ -283,6 +283,7 @@ class SearchableTextCollection:
       return
 
   def update_matrix(self):
+    print "Computing score matrix."
     self.D = []
     for doc in self.texts:
       d = []
@@ -603,20 +604,22 @@ def main():
 
   try:
     soul = pickle.load(open("target_user.soul", "r"))
-  except Exception,e:
-    traceback.print_exc()
+  except IOError:
     print "No soul file found. Regenerating."
     soul = CorpusSoul('target_user')
     pickle.dump(soul, open("target_user.soul", "w"))
+  except Exception,e:
+    traceback.print_exc()
 
   try:
     brain = BrainReader.load(open("target_user.brain", "r"))
     brain.restart(soul)
-  except Exception,e:
-    traceback.print_exc()
+  except IOError:
     print "No brain file found. Regenerating."
     brain = TwitterBrain(soul)
     BrainReader.write(brain, open("target_user.brain", "w"))
+  except Exception,e:
+    traceback.print_exc()
 
   c = StdinLoop(brain)
   try:

@@ -17,7 +17,6 @@ from tokenizer import word_tokenize, word_detokenize
 # 4. If no result, nltk.pos_tag
 
 # FIXME: Can we do anything clever with "!1!1!1" and "?//?/1!/"? Maybe a regex?
-# FIXME: We also need to model capitalization patterns..
 class TokenNormalizer:
   # FIXME: these static maps should be class variables
   def __init__(self):
@@ -30,13 +29,14 @@ class TokenNormalizer:
                     "teh":"the", "fb":"Facebook", "2nite":"tonight",
                     "ur" :"your",
                     "ya":"you", "yah":"yes", #fishy
-                    "i":"I", "y":"why" }
+                    "i":"I", "y":"why", "o":"oh" }
 
     # Make sure capital words are always capitalized for POS tag
     f = open("/usr/share/dict/words", "r")
     for word in f.readlines():
       if curses.ascii.isupper(word[0]):
         self.mono_map[word.lower()] = word
+    f.close()
 
     # Store following (if matched) in map, then return tuple
     self.dual_map = { ("gon", "na") : ("going", "to"),
@@ -59,6 +59,8 @@ class TokenNormalizer:
                      ("i", "ve") : ("I", "have"),
                      ("i", "ll") : ("I", "will"),
                      ("i", "m") : ("I", "am"),
+                     ("o", "rly") : ("oh", "really"),
+                     ("ya", "rly") : ("yes", "really"),
                      ("wha", "chu") : ("what", "you"), # hack...
                      ("what", "chu") : ("what", "you"), # hack...
                      ("wha", "cha") : ("what", "you"), # hack...
@@ -81,6 +83,14 @@ class TokenNormalizer:
 
     self.dual_counts = {}
     self.dual_totals = {}
+
+    # A list of words always capitalized by this user, as a pair
+    # to indicate frequency
+    self.capital_words = {}
+
+    self.sentences_capitalized = 0;
+    self.sentences_lowercase = 0;
+
 
   def _normalize(self, word, next_word):
     word_orig = word
@@ -219,6 +229,29 @@ class TokenNormalizer:
   def normalize_tokens(self, tokens):
     ret_tokens = []
 
+    # Track capitalization of sentences
+    if tokens[0][0].isupper():
+      self.sentences_capitalized += 1
+    else:
+      self.sentences_lowercase += 1
+
+    for i in xrange(1,len(tokens)):
+      if curses.ascii.ispunct(tokens[i-1][-1]):
+        if not tokens[i].isupper() and tokens[i][0].isupper():
+          self.sentences_capitalized += 1
+        else:
+          self.sentences_lowercase += 1
+      else:
+        ltoken = tokens[i].lower()
+        # Model capitalization
+        if ltoken in self.capital_words:
+          if not tokens[i].isupper() and tokens[i][0].isupper():
+             self.capital_words[ltoken][0] += 1
+          else:
+             self.capital_words[ltoken][1] += 1
+        elif not tokens[i].isupper() and tokens[i][0].isupper():
+          self.capital_words[ltoken] = [1,0]
+
     tok_len = len(tokens)
     i = 0
     while i < tok_len-1:
@@ -256,6 +289,31 @@ class TokenNormalizer:
       ret_tokens.extend(new_toks)
 
     if i < tok_len: ret_tokens.extend(self._denormalize(tokens[i], ""))
+
+    # Normalize capitalization
+    chance = float(self.sentences_capitalized)
+    chance = chance/(chance+self.sentences_lowercase)
+    if random.random() < chance:
+      cap_sentences = True
+    else:
+      cap_sentences = False
+
+    for i in xrange(tok_len):
+      if ret_tokens[i].upper(): continue
+      ltoken = ret_tokens[i].lower()
+
+      if ltoken in self.capital_words:
+        chance = float(self.capital_words[ltoken][0])
+        chance = chance/(chance+self.capital_words[ltoken][1])
+        if random.random() < chance:
+          ret_tokens[i] = ret_tokens[i][0].upper()+ret_tokens[i][1:]
+          print "Choosing to cap word: "+ret_tokens[i]
+          continue
+      if cap_sentences and (i==0 or curses.ascii.ispunct(ret_tokens[i-1][-1])):
+        ret_tokens[i] = ret_tokens[i][0].upper()+ret_tokens[i][1:]
+        print "Choosing to cap sentence word: "+ret_tokens[i]
+        continue
+      ret_tokens[i] = ltoken
     return ret_tokens
 
   @classmethod
@@ -364,6 +422,7 @@ class PhraseGenerator:
 
   # FIXME: Can use en.noun.article() instead:
   # http://nodebox.net/code/index.php/Linguistics
+  # XXX: This doesn't seem to be working..
   def hack_grammar(self, tokens):
     # "a/an",
     for i in xrange(len(tokens)-1):
