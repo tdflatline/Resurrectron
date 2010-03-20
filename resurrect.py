@@ -5,7 +5,8 @@
 try:
   import psyco
   psyco.full()
-except: pass
+except:
+  print "Psyco JIT not found. Queries will run MUCH slower."
 
 import nltk
 import re
@@ -19,25 +20,22 @@ import time
 import traceback
 import cmd
 import sys
+import en
 #import twitter
 
 from libs.tokenizer import word_tokenize, word_detokenize
 from libs.SpeechModels import PhraseGenerator, TokenNormalizer
 from extract import CorpusSoul
 
-# Maybe pos-tag isn't that important for searching. It seems
-# to make some things harder... We probably should strip tenses from
-# verbs, at least
-# XXX: Unused
 class POSTrim:
-   def __init__(self):
-    self.pos_map = { "VBD":"VB", "VBG":"VB", "VBN":"VB", "VBP":"VB", "VBZ":"VB",
+   pos_map = { "VBD":"VB", "VBG":"VB", "VBN":"VB", "VBP":"VB", "VBZ":"VB",
                        "JJR":"JJ", "JJS":"JJ",
-                       "NNS":"NN", "NNPS":"NN", "NNP":"NN" }
-
-   def trim(self, pos):
-     if pos in self.pos_map:
-       return self.pos_map[pos]
+                       "NNS":"NN", "NNPS":"NN", "NNP":"NN",
+                       "RBR":"RB", "RBS":"RB" }
+   @classmethod
+   def trim(cls, pos):
+     if pos in cls.pos_map:
+       return cls.pos_map[pos]
      else:
        return pos
 
@@ -117,14 +115,26 @@ class ConversationContext:
     self.normalizer = TokenNormalizer()
     self.decay = decay
     self.memory_vector = None
+    self.last_query_time = time.time()
 
-  # XXX: Make this time based..
+  def prime_memory(self, vector=None):
+    now = time.time()
+    if now - self.last_query_time > 12*60*60:
+      print "Priming stale memory query for user: "+self.nick
+      self.memory_vector = vector
+      self.last_query_time = now
+
   def decay_query(self, q_vector):
+    now = time.time()
+    if now - self.last_query_time > 12*60*60:
+      print "Expiring stale memory query for user: "+self.nick
+      self.memory_vector = None
     if self.memory_vector != None:
       self.memory_vector *= self.decay
       self.memory_vector += q_vector
     else:
       self.memory_vector = q_vector
+    self.last_query_time = now
     return self.memory_vector
 
   def remember_query(self, q_vector):
@@ -166,7 +176,7 @@ class URLClassifier:
 
 class SearchableText:
   skip_tokens = set(['"','(',')','[',']']) # XXX: use?
-  def __init__(self, text, tokens=None, tagged_tokens=None, strip=False, hidden_text=""):
+  def __init__(self, text, tokens=None, tagged_tokens=None, strip=False, hidden_text="", generalize_terms=True):
     if hidden_text:
       hidden_text = hidden_text.rstrip()
       if not curses.ascii.ispunct(hidden_text[-1]):
@@ -195,7 +205,30 @@ class SearchableText:
                             QueryStripper.strip_tagged_query(pos_tags)]
     else:
       self.search_tokens = [porter.stem(t[0]).lower() for t in pos_tags]
+
     self.vocab = set(self.search_tokens)
+
+    if generalize_terms:
+      # Add senses, antonyms, and hypernyms to this list with
+      # http://nodebox.net/code/index.php/Linguistics
+      # Also add normalized versions with en.spelling() first
+      new_terms = set()
+      for v in xrange(len(self.search_tokens)):
+         sv = self.search_tokens[v]
+         # en.spelling.correct(v)
+         tag = POSTrim.trim(pos_tags[v][1])
+         mod = None
+         if tag == "NN": mod = en.noun
+         elif tag == "JJ": mod = en.adjective
+         elif tag == "VB": mod = en.verb
+         elif tag == "RB": mod = en.adverb
+         if mod:
+           new_terms.update(en.list.flatten(mod.senses(sv)))
+           new_terms.update(en.list.flatten(mod.antonym(sv)))
+           new_terms.update(en.list.flatten(mod.hypernym(sv)))
+           new_terms.update(en.list.flatten(mod.hyponym(sv)))
+      self.vocab.update(new_terms)
+      self.search_tokens = list(self.vocab)
 
   def count(self, word):
     return self.search_tokens.count(word)
@@ -205,17 +238,30 @@ class SearchableText:
 #  1. Tag, tolower(), stem
 #  2. if strip: strip all but nouns, adj, verbs
 #  3. tf-idf to score text record from collection
-#  4. TODO: If score is 0, requery for "WTF buh uh huh dunno what talking about"
-#  5. FIXME: Return probabilistically based on score with some cutoff
-#  6. TODO: try to avoid replying to questions with questions. score lower.
+#  4. If score is 0, requery for "WTF buh uh huh dunno what talking about"
+#  5. Return probabilistically based on score with some cutoff
 
-# TODO: Build the score vectors using both the tagged and untaged words
-# Then if tags and words match, you get more score than just tags,
-# but its not total fail if your question can't be parsed..
 class SearchableTextCollection:
-  def __init__(self, vocab, texts=[]):
+  def __init__(self, vocab, texts=[], generalize_terms=True):
     self._idf_cache = {}
     self.texts = texts
+    if generalize_terms:
+      vocab = set(vocab)
+      new_terms = set()
+      print "Generalizing vocabulary"
+      for v in vocab:
+         # Actually, no need to spell check here. It's probably
+         # spelled right eventually, and this is SLOW!
+         sv = v #en.spelling.correct(v)
+         new_terms.update(sv)
+         # Use parts of speech. en.wordnet is not a superset..
+         for mod in [en.adjective, en.noun, en.verb, en.adverb]:
+           new_terms.update(en.list.flatten(mod.senses(sv)))
+           new_terms.update(en.list.flatten(mod.antonym(sv)))
+           new_terms.update(en.list.flatten(mod.hypernym(sv)))
+           new_terms.update(en.list.flatten(mod.hyponym(sv)))
+      vocab.update(new_terms)
+      print "Generalized vocabulary"
     self.vocab = list(vocab)
     self.vocab.sort()
     if texts:
@@ -227,7 +273,6 @@ class SearchableTextCollection:
     self.needs_update = True
     if update: self.update_matrix()
 
-  # XXX: Hrmm.. this is not removing the entry?
   def remove_text(self, text, update=False):
     try:
       self.texts.remove(text)
@@ -317,7 +362,6 @@ class SearchableTextCollection:
     i = 0
     keep = 0
     while keep < randomize_top:
-      # XXX: This is failing
       if self.texts[sorted_scores[i][1]] in exclude or \
          len(self.texts[sorted_scores[i][1]].text) > max_len:
         print "Popping excluded tweet: "+self.texts[sorted_scores[i][1]].text
@@ -326,8 +370,7 @@ class SearchableTextCollection:
       i += 1
       keep += 1
 
-    # Choose from top 5 scores..
-    # FIXME: This is still kind of arbitrary
+    # Choose from top N scores..
     top_quart = 0
     count = 0.0
     for i in xrange(randomize_top):
@@ -341,8 +384,8 @@ class SearchableTextCollection:
         return (self.D[sorted_scores[i][1]],
                     self.texts[sorted_scores[i][1]])
     print "WTF? No doc found: "+str(count)+" "+str(tot_score)
-    # XXX: Get the correct vector for this
-    return (query_vector, random.choice(self.texts))
+    retidx = random.randint(0, len(self.texts)-1)
+    return (self.D[retidx], self.texts[retidx])
 
   def tf(self, term, text):
     """ The frequency of the term in text. """
@@ -382,9 +425,10 @@ class TwitterBrain:
     for t in soul.tagged_tweets:
       words = map(lambda x: x[0], t)
       self.already_tweeted.append(set(words))
-    self.restart(soul, pending_goal, low_watermark)
     self.conversation_contexts = {}
     self.raw_normalizer = TokenNormalizer()
+    self.last_vect = None
+    self.restart(soul, pending_goal, low_watermark) # Must come last!
 
   def restart(self, soul, pending_goal=1500, low_watermark=1400):
     self.low_watermark = low_watermark
@@ -406,12 +450,9 @@ class TwitterBrain:
     max_len = 140
     if query:
       if msger:
-        # FIXME: Also add meronyms to this list with
-        # en.is_noun and en.noun.meronym()..
-        # And possibly antonyms too..
-        # http://nodebox.net/code/index.php/Linguistics
-        # Also normalize with en.spelling() first
-        # All this probably should be done in SearchableText
+        # TODO: Only prime memory if excessive pronouns in query?
+        if self.last_vect:
+          self.conversation_contexts[msger].prime_memory(self.last_vect*0.25)
         query = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query)))
         max_len -= len("@"+msger+" ")
         qvect = self.conversation_contexts[msger].decay_query(
@@ -424,16 +465,14 @@ class TwitterBrain:
                                       max_len=max_len)
         self.conversation_contexts[msger].remember_query(rvect*0.25)
       else:
-        # XXX: We should remember this too, so that when people
-        # @msg us there is context.
         query = word_detokenize(self.raw_normalizer.normalize_tokens(word_tokenize(query)))
-        (rvect, ret) = self.pending_tweets.query_string(query,
+        (self.last_vect, ret) = self.pending_tweets.query_string(query,
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
     else:
       while True:
         ret = random.choice(self.pending_tweets.texts)
-        # FIXME: make set? hrmm. depends on if its a hash
+        # hrmm.. make this a set? hrmm. depends on if its a hash
         # or pointer comparison.
         if ret not in self.remove_tweets:
           break
@@ -473,6 +512,7 @@ class TwitterBrain:
       print "Worker thread died."
       traceback.print_exc()
     print "Worker thread quit."
+    sys.exit(0)
 
   # Needed to avoid the race condition on pickling..
   def __lock(self):
@@ -497,7 +537,7 @@ class TwitterBrain:
         self.__unlock()
 
       # Need low watermark. Maybe goal-100?
-      if len(self.pending_tweets.texts) < self.low_watermark:
+      if len(self.pending_tweets.texts) <= self.low_watermark:
         while len(self.pending_tweets.texts) < self.pending_goal:
           (tweet,tokens,tagged_tokens) = self.voice.say_something()
           if len(tweet) > 140: continue
@@ -515,9 +555,7 @@ class TwitterBrain:
 
           if len(self.pending_tweets.texts) % \
                 (self.pending_goal-self.low_watermark) == 0:
-            # XXX: Cleanup filename
             break # Perform other work
-        # XXX: This process is expensive:
       if added_tweets:
         print "At tweet count "+str(len(self.pending_tweets.texts))+\
                   "/"+str(self.pending_goal)
@@ -581,7 +619,11 @@ def main():
     BrainReader.write(brain, open("target_user.brain", "w"))
 
   c = StdinLoop(brain)
-  c.cmdloop()
+  try:
+    c.cmdloop()
+  except:
+    traceback.print_exc()
+    sys.exit(0)
 
 if __name__ == "__main__":
   main()

@@ -17,6 +17,7 @@ from tokenizer import word_tokenize, word_detokenize
 # 4. If no result, nltk.pos_tag
 
 # FIXME: Can we do anything clever with "!1!1!1" and "?//?/1!/"? Maybe a regex?
+# FIXME: We also need to model capitalization patterns..
 class TokenNormalizer:
   # FIXME: these static maps should be class variables
   def __init__(self):

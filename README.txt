@@ -2,15 +2,21 @@ Quick steps:
 
 0. Download and install nltk-2.08b and all its dependencies:
    http://www.nltk.org/
-1. Optional, but recommended: Download AGFL 2.8:
+1. Download and install the NodeBox linguistics library:
+   http://nodebox.net/code/index.php/Linguistics (we use 1.9.4.2).
+   This one just needs to be in your $PYTHONPATH
+2. Optional, but recommended: Download AGFL 2.8 and CDL3:
    http://www.agfl.cs.ru.nl/download.html
    http://www.cs.ru.nl/cdl3/
-2. Optional: Build the EP4ir grammar in ./libs/agfl_ep4/ with 'agfl ep4ir.gra'
-3. Use the harvest.py script to pull down a bunch of .jtwt files
+   You may need to apply the patch in ./patches/cdl-1.2.7.diff to get
+   CDL3 to compile.
+3. Optional: Build the EP4ir grammar in ./libs/agfl_ep4/ with 'agfl ep4ir.gra'
+4. Use the harvest.py script to pull down a bunch of .jtwt files
    from a twitter feed.
-4. Throw them in the directory ./target_user/
-5. Run ./resurrect.py to generate a .soul file and a .brain file.
-6. Torment the AI to your hearts content.
+5. Throw them in the directory ./target_user/
+6. Run ./resurrect.py to generate a .soul file and a .brain file.
+7. Torment the AI to your hearts content.
+8. Hit Control-D or q!<enter> to exit.
 
 Note that the .soul and .brain generation process takes quite some time.
 The brain generation process does run in the background while you chat
