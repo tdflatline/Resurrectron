@@ -7,6 +7,7 @@ try:
   psyco.full()
 except: pass
 
+import bz2
 import nltk
 import simplejson as json
 import os
@@ -128,7 +129,6 @@ def pos_tag(tokens):
     print "AGFL not being used" # XXX: Kill this log
     return nltk.pos_tag(tokens)
 
-# XXX: "@kategardiner www.sexpigeon.org"
 class CorpusSoul:
   def __init__(self, directory):
     self.normalizer = TokenNormalizer()
@@ -200,12 +200,12 @@ class SoulWriter:
 
 def main():
   try:
-    soul = pickle.load(open("target_user.soul", "r"))
+    soul = pickle.load(bz2.BZ2File("target_user.soul", "r"))
   except Exception,e:
     traceback.print_exc()
     print "No soul file found. Regenerating."
     soul = CorpusSoul('target_user')
-    pickle.write(soul, open("target_user.soul", "w"))
+    pickle.write(soul, bz2.BZ2File("target_user.soul", "w"))
 
   voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
 

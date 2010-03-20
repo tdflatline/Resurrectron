@@ -8,6 +8,7 @@ try:
 except:
   print "Psyco JIT not found. Queries will run MUCH slower."
 
+import bz2
 import nltk
 import re
 import cPickle as pickle
@@ -20,6 +21,7 @@ import time
 import traceback
 import cmd
 import sys
+import atexit
 import en
 #import twitter
 
@@ -222,6 +224,7 @@ class SearchableText:
          elif tag == "JJ": mod = en.adjective
          elif tag == "VB": mod = en.verb
          elif tag == "RB": mod = en.adverb
+         else: mod = en.wordnet # XXX: Too much cpu?
          if mod:
            new_terms.update(en.list.flatten(mod.senses(sv)))
            new_terms.update(en.list.flatten(mod.antonym(sv)))
@@ -255,7 +258,7 @@ class SearchableTextCollection:
          sv = v #en.spelling.correct(v)
          new_terms.update(sv)
          # Use parts of speech. en.wordnet is not a superset..
-         for mod in [en.adjective, en.noun, en.verb, en.adverb]:
+         for mod in [en.wordnet, en.adjective, en.noun, en.verb, en.adverb]:
            new_terms.update(en.list.flatten(mod.senses(sv)))
            new_terms.update(en.list.flatten(mod.antonym(sv)))
            new_terms.update(en.list.flatten(mod.hypernym(sv)))
@@ -453,7 +456,7 @@ class TwitterBrain:
       if msger:
         # TODO: Only prime memory if excessive pronouns in query?
         if self.last_vect:
-          self.conversation_contexts[msger].prime_memory(self.last_vect*0.25)
+          self.conversation_contexts[msger].prime_memory(self.last_vect*0.75)
         query = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query)))
         max_len -= len("@"+msger+" ")
         qvect = self.conversation_contexts[msger].decay_query(
@@ -461,10 +464,10 @@ class TwitterBrain:
         # FIXME: Hrmm. need to somehow create proper punctuation
         # based on both word content and position. Some kind
         # of classifier? Naive Bayes doesn't use position info though...
-        (rvect, ret) = self.pending_tweets.query_vector(qvect,
+        (self.last_vect, ret) = self.pending_tweets.query_vector(qvect,
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
-        self.conversation_contexts[msger].remember_query(rvect*0.25)
+        self.conversation_contexts[msger].remember_query(self.last_vect*0.75)
       else:
         query = word_detokenize(self.raw_normalizer.normalize_tokens(word_tokenize(query)))
         (self.last_vect, ret) = self.pending_tweets.query_string(query,
@@ -549,8 +552,9 @@ class TwitterBrain:
             self.__unlock()
             continue
 
-          self.pending_tweets.add_text(SearchableText(tweet,tokens,tagged_tokens),
-                             update=(not first_run))
+          self.pending_tweets.add_text(
+                      SearchableText(tweet,tokens,tagged_tokens),
+                      update=(not first_run))
           added_tweets = True
           self.__unlock()
 
@@ -561,7 +565,7 @@ class TwitterBrain:
         print "At tweet count "+str(len(self.pending_tweets.texts))+\
                   "/"+str(self.pending_goal)
         # XXX: Cleanup filename
-        BrainReader.write(self, open("target_user.brain", "w"))
+        BrainReader.write(self, bz2.BZ2File("target_user.brain", "w"))
       if len(self.pending_tweets.texts) == self.pending_goal:
         first_run=False
       time.sleep(3)
@@ -598,29 +602,35 @@ class StdinLoop(cmd.Cmd):
     print str_result
     print str(tagged_tokens)
 
+def write_brain(brain):
+  print "Re-writing brain file. Please be patient....."
+  BrainReader.write(brain, bz2.BZ2File("target_user.brain", "w"))
+  print "Brain file written."
+
 def main():
   brain = None
   soul = None
 
   try:
-    soul = pickle.load(open("target_user.soul", "r"))
+    soul = pickle.load(bz2.BZ2File("target_user.soul", "r"))
   except IOError:
     print "No soul file found. Regenerating."
     soul = CorpusSoul('target_user')
-    pickle.dump(soul, open("target_user.soul", "w"))
+    pickle.dump(soul, bz2.BZ2File("target_user.soul", "w"))
   except Exception,e:
     traceback.print_exc()
 
   try:
-    brain = BrainReader.load(open("target_user.brain", "r"))
+    brain = BrainReader.load(bz2.BZ2File("target_user.brain", "r"))
     brain.restart(soul)
   except IOError:
     print "No brain file found. Regenerating."
     brain = TwitterBrain(soul)
-    BrainReader.write(brain, open("target_user.brain", "w"))
+    BrainReader.write(brain, bz2.BZ2File("target_user.brain", "w"))
   except Exception,e:
     traceback.print_exc()
 
+  atexit.register(write_brain, *(brain,))
   c = StdinLoop(brain)
   try:
     c.cmdloop()
