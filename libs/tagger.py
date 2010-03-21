@@ -63,7 +63,7 @@ class AGFLTweaker:
       tokens.remove("'s")
 
   # FIXME: Can we do anything clever with "!1!1!1" and "?//?/1!/"?
-  # AGFL also hates "..,"
+  # AGFL also hates ".."
   # FIXME: This needs context...
   bad_affix = ["^[\#\@\']", "[\']$"]
   replace = ["^[\/\*\']", "[\/\*\']$"] # => ""

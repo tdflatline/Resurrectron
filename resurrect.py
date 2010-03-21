@@ -560,7 +560,7 @@ class TwitterBrain:
           self.__unlock()
 
           if len(self.pending_tweets.texts) % \
-                (2*(self.pending_goal-self.low_watermark)) == 0:
+                ((self.pending_goal-self.low_watermark)) == 0:
             break # Perform other work
       if added_tweets:
         print "At tweet count "+str(len(self.pending_tweets.texts))+\

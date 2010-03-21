@@ -32,14 +32,18 @@ class TokenNormalizer:
                     "w/o":"without", "w/":"with", "b/c":"because",
                     "+":"and", "&":"and", "'em":"them", "st":"street",
                     "til":"until", "'till":"until",
+                    "totes":"totally", "stunnah":"stunner",
                     "ya":"you", "yah":"yes", #fishy
                     "i":"I", "y":"why", "o":"oh" }
 
     # Make sure capital words are always capitalized for POS tag
     f = open("/usr/share/dict/words", "r")
+    self.lowercase_words = set()
     for word in f.readlines():
       if curses.ascii.isupper(word[0]):
         self.mono_map[word.lower()] = word
+      elif word.islower():
+        self.lowercase_words.update(word)
     f.close()
 
     # Generate a mono_map for word+"in'" -> word+"ing"
@@ -351,7 +355,7 @@ class TokenNormalizer:
       ltoken = ret_tokens[i].lower()
 
       # XXX: Hrmm. maybe we should have a seperate stat for ALL lowercase..
-      if ltoken in self.capital_words:
+      if ltoken in self.capital_words and ltoken not in self.lowercase_words:
         chance = float(self.capital_words[ltoken][0])
         chance = chance/(chance+self.capital_words[ltoken][1])
         if chance > 0.75 or (chance > 0.5 and random.random() < chance):
