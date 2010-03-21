@@ -34,9 +34,9 @@ class TokenNormalizer:
                     "til":"until", "'till":"until",
                     "totes":"totally", "stunnah":"stunner",
                     "4get":"forget", "4git":"forget", "4gt":"forget",
-                    "4got":"forgot",
+                    "4got":"forgot", "gangsta":"gangster",
                     "ya":"you", "yah":"yes", #fishy
-                    "i":"I", "y":"why", "o":"oh" }
+                    "i":"I", "y":"why", "o":"oh", "rly":"really" }
 
     # Make sure capital words are always capitalized for POS tag
     f = open("/usr/share/dict/words", "r")

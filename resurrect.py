@@ -536,7 +536,7 @@ class TwitterBrain:
     first_run = True
     while not self._shutdown:
       added_tweets = False
-      if len(self.remove_tweets) > 10:
+      if len(self.remove_tweets) > 50:
         self.__lock()
         while len(self.remove_tweets) > 0:
           self.pending_tweets.remove_text(self.remove_tweets.pop())
@@ -568,6 +568,9 @@ class TwitterBrain:
         # XXX: Cleanup filename
         BrainReader.write(self, "target_user.brain")
       if len(self.pending_tweets.texts) == self.pending_goal:
+        self.__lock()
+        self.pending_tweets.update_matrix()
+        self.__unlock()
         first_run=False
       time.sleep(3)
 
