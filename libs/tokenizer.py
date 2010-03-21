@@ -103,7 +103,7 @@ class TreebankWordTokenizer(TokenizerI):
         return text.split()
 
     PREFIX_PUNCTS = set([ "$", "#", "@", "-" ])
-    INFIX_PUNCTS = set([ "&", "+" ]) # could also be suprsnuggle...
+    INFIX_PUNCTS = set([ "&", "+", "=" ]) # could also be suprsnuggle...
 
     def detokenize(self, orig_tokens):
         tokens = []
@@ -157,7 +157,7 @@ def main():
   tok = TreebankWordTokenizer()
   print tok.tokenize("Hi a-ok.... g+money I&I. You..like? www.foo.com? www.foo.com. www.goo.com/")
   print tok.detokenize(["25%", "predict", "a lot", "of", "G-Unit", "45%", "fashion"])
-  print tok.detokenize(tok.tokenize("I&u are+teh best @ 7:30 pm 1:30. a-hi."))
+  print tok.detokenize(tok.tokenize("I&u are+teh best @ 7:30 pm 1:30. a=hi."))
 
 
 if __name__ == "__main__":

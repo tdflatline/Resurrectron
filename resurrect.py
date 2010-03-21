@@ -177,7 +177,6 @@ class URLClassifier:
   pass
 
 class SearchableText:
-  skip_tokens = set(['"','(',')','[',']']) # XXX: use?
   def __init__(self, text, tokens=None, tagged_tokens=None, strip=False, hidden_text="", generalize_terms=True):
     if hidden_text:
       hidden_text = hidden_text.rstrip()
@@ -189,8 +188,8 @@ class SearchableText:
 
     if not curses.ascii.ispunct(text[-1]): text += "."
 
-    # XXX: We should remove the tagged tokens and possibly the tokens
-    # too. This eats a lot of storage.
+    # FIXME: We should remove the tagged tokens and possibly the tokens
+    # too. This eats a lot of storage. But bzip2 makes it not matter..
     self.tagged_tokens = tagged_tokens
     if tokens: self.tokens = tokens
     else: self.tokens = word_tokenize(text)
@@ -224,7 +223,7 @@ class SearchableText:
          elif tag == "JJ": mod = en.adjective
          elif tag == "VB": mod = en.verb
          elif tag == "RB": mod = en.adverb
-         else: mod = en.wordnet # XXX: Too much cpu?
+         else: mod = en.wordnet
          if mod:
            new_terms.update(en.list.flatten(mod.senses(sv)))
            new_terms.update(en.list.flatten(mod.antonym(sv)))
@@ -562,36 +561,38 @@ class TwitterBrain:
           if len(self.pending_tweets.texts) % \
                 ((self.pending_goal-self.low_watermark)) == 0:
             break # Perform other work
-      if added_tweets:
-        print "At tweet count "+str(len(self.pending_tweets.texts))+\
-                  "/"+str(self.pending_goal)
-        # XXX: Cleanup filename
-        BrainReader.write(self, "target_user.brain")
       if len(self.pending_tweets.texts) == self.pending_goal:
         self.__lock()
         self.pending_tweets.update_matrix()
         self.__unlock()
         first_run=False
+        BrainReader.write(self, "target_user.brain", True)
+        print "At full tweet count "+str(self.pending_goal)
+      elif added_tweets:
+        print "At tweet count "+str(len(self.pending_tweets.texts))+\
+                  "/"+str(self.pending_goal)
+        BrainReader.write(self, "target_user.brain")
       time.sleep(3)
 
 # Lousy hmm can't be pickled
 class BrainReader:
   @classmethod
-  def write(cls, brain, fname):
+  def write(cls, brain, fname, bzip2=False):
     (voice,thread,lock) = (brain.voice,brain._thread,brain.work_lock)
     lock.acquire()
     (brain.voice,brain._thread,brain.work_lock) = (None,None,None)
-    # XXX: Make this smarter?
-    pickle.dump(brain, open(fname+".part", "w"))
-    #pickle.dump(brain, bz2.BZ2File(fname+".part", "w"))
+    if bzip2: pickle.dump(brain, bz2.BZ2File(fname+".part", "w"))
+    else: pickle.dump(brain, open(fname+".part", "w"))
     (brain.voice,brain._thread,brain.work_lock) = (voice,thread,lock)
     os.rename(fname+".part", fname)
     lock.release()
 
   @classmethod
   def load(cls, fname):
-    brain = pickle.load(open(fname, "r"))
-    #brain = pickle.load(bz2.BZ2File(fname, "r"))
+    try:
+      brain = pickle.load(open(fname, "r"))
+    except KeyError:
+      brain = pickle.load(bz2.BZ2File(fname, "r"))
     return brain
 
 class StdinLoop(cmd.Cmd):

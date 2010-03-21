@@ -35,7 +35,7 @@ class TokenNormalizer:
                     "totes":"totally", "stunnah":"stunner",
                     "4get":"forget", "4git":"forget", "4gt":"forget",
                     "4got":"forgot", "gangsta":"gangster",
-                    "ya":"you", "yah":"yes", #fishy
+                    "ya":"you", "yah":"yes", "=":"is", #fishy
                     "i":"I", "y":"why", "o":"oh", "rly":"really" }
 
     # Make sure capital words are always capitalized for POS tag

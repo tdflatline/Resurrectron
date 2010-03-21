@@ -91,7 +91,7 @@ class CorpusSoul:
     for s in sentences:
       if len(s) > 140: continue
       if len(tweet + s) < 140:
-        tweet += s
+        tweet += s+" "
       else:
         if tweet: tweets.append(tweet)
         tweet = ""
