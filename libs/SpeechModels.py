@@ -33,6 +33,8 @@ class TokenNormalizer:
                     "+":"and", "&":"and", "'em":"them", "st":"street",
                     "til":"until", "'till":"until",
                     "totes":"totally", "stunnah":"stunner",
+                    "4get":"forget", "4git":"forget", "4gt":"forget",
+                    "4got":"forgot",
                     "ya":"you", "yah":"yes", #fishy
                     "i":"I", "y":"why", "o":"oh" }
 

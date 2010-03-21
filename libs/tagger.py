@@ -158,7 +158,7 @@ def main():
   print toks
   tweaker.deprune(toks)
   print toks
-  print pos_tag(word_tokenize("@John, I am going to the #store."))
+  print pos_tag(word_tokenize("@John, I am going to the #store. Will you #come with me?"))
 
 if __name__ == "__main__":
    main()
