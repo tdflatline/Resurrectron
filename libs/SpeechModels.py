@@ -46,6 +46,7 @@ class TokenNormalizer:
     # Generate a mono_map for *word* and /word/
     self.mono_regex = [("\*([\S]+)\*", r"\1"),
                        ("\/([\S]+)\/", r"\1"),
+                       ("\'([\S]+)\'", r"\1"),
                        (r"(\S+)in\'", r"\1ing")]
 
     # Store following (if matched) in map, then return tuple

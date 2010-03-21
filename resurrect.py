@@ -529,6 +529,9 @@ class TwitterBrain:
   def __unlock(self):
     self.work_lock.release()
 
+  # TODO: Maybe this whole tweet pool model is the wrong way to go.
+  # We could try influencing the HMM's probabilities directly using a query,
+  # but I'm not sure how to do that and not get utter nonsense.
   def __phrase_worker2(self):
     first_run = True
     while not self._shutdown:
@@ -557,7 +560,7 @@ class TwitterBrain:
           self.__unlock()
 
           if len(self.pending_tweets.texts) % \
-                2*(self.pending_goal-self.low_watermark) == 0:
+                (2*(self.pending_goal-self.low_watermark)) == 0:
             break # Perform other work
       if added_tweets:
         print "At tweet count "+str(len(self.pending_tweets.texts))+\

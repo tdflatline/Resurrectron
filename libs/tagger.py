@@ -124,11 +124,12 @@ def pos_tag(tokens):
       tweaker = AGFLTweaker()
       tweaker.agfl_fix(stokens, nltk_tags)
       tweaker.prune(stokens)
+      s = word_detokenize(stokens)
       if not s:
         print "Empty string for: "+str(stokens)
         continue
-      #print "Parsing: |"+s+"|"
-      agfl_tree = agfl.parse_sentence(word_detokenize(stokens))
+      print "Parsing: |"+s+"|"
+      agfl_tree = agfl.parse_sentence(s)
       if not agfl_tree:
         print "Parse fail for |"+s+"|"
         return None # Hrmm. use partials? Prob not
