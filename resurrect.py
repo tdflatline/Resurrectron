@@ -29,6 +29,8 @@ from libs.tokenizer import word_tokenize, word_detokenize
 from libs.SpeechModels import PhraseGenerator, TokenNormalizer
 from extract import CorpusSoul
 
+import easter_eggs
+
 class POSTrim:
    pos_map = { "VBD":"VB", "VBG":"VB", "VBN":"VB", "VBP":"VB", "VBZ":"VB",
                        "JJR":"JJ", "JJS":"JJ",
@@ -416,13 +418,13 @@ class SearchableTextCollection:
 # as a SearchableTextCollection.
 #
 # It also manages a separate worker thread for generating more pending tweets.
-# XXX: Encode some responses to "Are you a bot/human?" etc etc using hidden text.
-# XXX: also fun easter eggs like the xkcd bot captcha response
 class TwitterBrain:
   def __init__(self, soul, pending_goal=1500, low_watermark=1400):
     # Need an ordered list of vocab words for SearchableTextCollection.
     # If it vocab changes, we fail.
+    for t in easter_eggs.xkcd: soul.vocab.update(t.vocab)
     self.pending_tweets = SearchableTextCollection(soul.vocab)
+    for t in easter_eggs.xkcd: self.pending_tweets.add_text(t)
     self.already_tweeted = []
     self.remove_tweets = []
     for t in soul.tagged_tweets:
