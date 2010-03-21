@@ -4,6 +4,7 @@ import curses.ascii
 
 import random
 import traceback
+import re
 #import twitter
 
 import hmm
@@ -27,9 +28,9 @@ class TokenNormalizer:
     self.mono_map = { "u":"you", "r":"are", "m":"am", "c":"see", "n":"and",
                     "h8":"hate", "<3":"love", "thx":"thanks",
                     "teh":"the", "fb":"Facebook", "2nite":"tonight",
-                    "ur" :"your", "dbag":"douche",
+                    "ur" :"your", "dbag":"douche", "nye":"newyears",
                     "w/o":"without", "w/":"with", "b/c":"because",
-                    "+":"and", "&":"and", "'em":"them",
+                    "+":"and", "&":"and", "'em":"them", "st":"street",
                     "til":"until", "'till":"until",
                     "ya":"you", "yah":"yes", #fishy
                     "i":"I", "y":"why", "o":"oh" }
@@ -40,6 +41,12 @@ class TokenNormalizer:
       if curses.ascii.isupper(word[0]):
         self.mono_map[word.lower()] = word
     f.close()
+
+    # Generate a mono_map for word+"in'" -> word+"ing"
+    # Generate a mono_map for *word* and /word/
+    self.mono_regex = [("\*([\S]+)\*", r"\1"),
+                       ("\/([\S]+)\/", r"\1"),
+                       (r"(\S+)in\'", r"\1ing")]
 
     # Store following (if matched) in map, then return tuple
     self.dual_map = { ("gon", "na") : ("going", "to"),
@@ -178,6 +185,20 @@ class TokenNormalizer:
       if isupper: return (self.mono_map[word].upper(),)
       else: return (self.mono_map[word],)
 
+    # FIXME: Make this recursive to catch nested versions?
+    for r in self.mono_regex:
+      norm_word = re.sub(r[0], r[1], word_orig)
+      if norm_word != word_orig:
+        if norm_word not in self.mono_counts: self.mono_counts[norm_word] = 0
+        self.mono_counts[norm_word] += 1
+
+        if word not in self.mono_denorm:
+          self.mono_denorm[norm_word] = {}
+        if word_orig not in self.mono_denorm[norm_word]:
+          self.mono_denorm[norm_word][word_orig] = 1
+        else: self.mono_denorm[word][word_orig] += 1
+        return (norm_word,)
+
     return (word_orig,)
 
   # Normalizing tags for hmm training might cause us to lose
@@ -311,7 +332,7 @@ class TokenNormalizer:
       if ltoken in self.capital_words:
         chance = float(self.capital_words[ltoken][0])
         chance = chance/(chance+self.capital_words[ltoken][1])
-        if chance > 0.75 or (chance > 0.334 and random.random() < chance):
+        if chance > 0.75 or (chance > 0.5 and random.random() < chance):
           ret_tokens[i] = ret_tokens[i][0].upper()+ret_tokens[i][1:]
           continue
       if cap_sentences and (i==0 or ret_tokens[i-1][-1] in ".?!"):
@@ -326,7 +347,7 @@ class TokenNormalizer:
     # to mind? Somewhat troubling...
     strings = ["Hi there. Gonna getcha. I've decided you'll die tonight.",
                "r u scared yet? B/c Ill rip our ur guts.",
-               "Whatcha up2? We're gonna go on a killing spree.",
+               "Whatcha up2? We're gonna go on a killin' /spree/.",
                "Holy crap dood.",
                "Are you going out?",
                "#Hi @I love/hate $0 http://yfrog.com/a3ss0sa *always* don't /you/....",

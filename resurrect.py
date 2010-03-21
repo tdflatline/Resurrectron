@@ -21,8 +21,8 @@ import time
 import traceback
 import cmd
 import sys
-import atexit
 import en
+import os
 #import twitter
 
 from libs.tokenizer import word_tokenize, word_detokenize
@@ -455,7 +455,7 @@ class TwitterBrain:
     if query:
       if msger:
         # TODO: Only prime memory if excessive pronouns in query?
-        if self.last_vect:
+        if self.last_vect != None:
           self.conversation_contexts[msger].prime_memory(self.last_vect*0.75)
         query = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query)))
         max_len -= len("@"+msger+" ")
@@ -543,12 +543,10 @@ class TwitterBrain:
       # Need low watermark. Maybe goal-100?
       if len(self.pending_tweets.texts) <= self.low_watermark:
         while len(self.pending_tweets.texts) < self.pending_goal:
-          (tweet,tokens,tagged_tokens) = self.voice.say_something()
-          if len(tweet) > 140: continue
-
           self.__lock()
+          (tweet,tokens,tagged_tokens) = self.voice.say_something()
 
-          if self.__did_already_tweet(set(tokens)):
+          if len(tweet) > 140 or self.__did_already_tweet(set(tokens)):
             self.__unlock()
             continue
 
@@ -559,13 +557,13 @@ class TwitterBrain:
           self.__unlock()
 
           if len(self.pending_tweets.texts) % \
-                (self.pending_goal-self.low_watermark) == 0:
+                2*(self.pending_goal-self.low_watermark) == 0:
             break # Perform other work
       if added_tweets:
         print "At tweet count "+str(len(self.pending_tweets.texts))+\
                   "/"+str(self.pending_goal)
         # XXX: Cleanup filename
-        BrainReader.write(self, bz2.BZ2File("target_user.brain", "w"))
+        BrainReader.write(self, "target_user.brain")
       if len(self.pending_tweets.texts) == self.pending_goal:
         first_run=False
       time.sleep(3)
@@ -573,17 +571,21 @@ class TwitterBrain:
 # Lousy hmm can't be pickled
 class BrainReader:
   @classmethod
-  def write(cls, brain, f):
+  def write(cls, brain, fname):
     (voice,thread,lock) = (brain.voice,brain._thread,brain.work_lock)
     lock.acquire()
     (brain.voice,brain._thread,brain.work_lock) = (None,None,None)
-    pickle.dump(brain, f)
+    # XXX: Make this smarter?
+    pickle.dump(brain, open(fname+".part", "w"))
+    #pickle.dump(brain, bz2.BZ2File(fname+".part", "w"))
     (brain.voice,brain._thread,brain.work_lock) = (voice,thread,lock)
+    os.rename(fname+".part", fname)
     lock.release()
 
   @classmethod
-  def load(cls, f):
-    brain = pickle.load(f)
+  def load(cls, fname):
+    brain = pickle.load(open(fname, "r"))
+    #brain = pickle.load(bz2.BZ2File(fname, "r"))
     return brain
 
 class StdinLoop(cmd.Cmd):
@@ -602,11 +604,6 @@ class StdinLoop(cmd.Cmd):
     print str_result
     print str(tagged_tokens)
 
-def write_brain(brain):
-  print "Re-writing brain file. Please be patient....."
-  BrainReader.write(brain, bz2.BZ2File("target_user.brain", "w"))
-  print "Brain file written."
-
 def main():
   brain = None
   soul = None
@@ -621,16 +618,15 @@ def main():
     traceback.print_exc()
 
   try:
-    brain = BrainReader.load(bz2.BZ2File("target_user.brain", "r"))
+    brain = BrainReader.load("target_user.brain")
     brain.restart(soul)
   except IOError:
     print "No brain file found. Regenerating."
     brain = TwitterBrain(soul)
-    BrainReader.write(brain, bz2.BZ2File("target_user.brain", "w"))
+    BrainReader.write(brain, "target_user.brain")
   except Exception,e:
     traceback.print_exc()
 
-  atexit.register(write_brain, *(brain,))
   c = StdinLoop(brain)
   try:
     c.cmdloop()

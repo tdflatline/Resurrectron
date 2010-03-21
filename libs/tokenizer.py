@@ -79,7 +79,6 @@ class TreebankWordTokenizer(TokenizerI):
             text = regexp.sub(r'\1 \2 \3', text)
 
         # Separate most punctuation.
-        # XXX: + and &?
         text = re.sub(r"([^\w\.\-\'\/,\:\*\@\#])", r' \1 ', text)
 
         # Separate :'s if they are not followed by // (urls)
@@ -96,7 +95,7 @@ class TreebankWordTokenizer(TokenizerI):
         text = re.sub(r"(,\s)", r' \1', text)
 
         # Separate single quotes if they're followed by a space.
-        text = re.sub(r"('\s)", r' \1', text)
+        #text = re.sub(r"('\s)", r' \1', text)
 
         return text.split()
 
