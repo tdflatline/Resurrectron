@@ -38,7 +38,7 @@ POSITIVE    = re.compile("post|hentry|entry|content|text|body|article")
 PUNCTUATION = re.compile("""[!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~]""")
 
 
-def grabContent(link, html):
+def grabContent(link, html, numParents=5):
     
     replaceBrs = re.compile("<br */? *>[ \r\n]*<br */? *>")
     html = re.sub(replaceBrs, "</p><p>", html)
@@ -85,13 +85,12 @@ def grabContent(link, html):
             
         parent.score += innerText.count(",")
         
-    for parent in parents:
-        if ((not topParent) or (parent.score > topParent.score)):
-            topParent = parent
 
-    if (not topParent):
+    if (not parents):
         return ""
-            
+
+    parents.sort(lambda y,x: x.score - y.score)
+
     # REMOVE LINK'D STYLES
     styleLinks = soup.findAll("link", attrs={"type" : "text/css"})
     for s in styleLinks:
@@ -101,20 +100,24 @@ def grabContent(link, html):
     for s in soup.findAll("style"):
         s.extract()
 
-    # CLEAN STYLES FROM ELEMENTS IN TOP PARENT
-    for ele in topParent.findAll(True):
-        del(ele['style'])
-        del(ele['class'])
-        
-    killDivs(topParent)
-    clean(topParent, "form")
-    clean(topParent, "object")
-    clean(topParent, "iframe")
-    
-    fixLinks(topParent, link)
-    
-    return topParent.renderContents()
-    
+    rets = []
+    for i in xrange(numParents):
+        topParent = parents[i]
+        # CLEAN STYLES FROM ELEMENTS IN TOP PARENT
+        for ele in topParent.findAll(True):
+            del(ele['style'])
+            del(ele['class'])
+        killDivs(topParent)
+        clean(topParent, "object")
+        clean(topParent, "iframe")
+        # Remove some junk we don't want
+        clean(topParent, "ol")
+        clean(topParent, "ul")
+        clean(topParent, "h4")
+        fixLinks(topParent, link)
+        rets.append(topParent.renderContents())
+
+    return rets
 
 def fixLinks(parent, link):
     tags = parent.findAll(True)
@@ -152,29 +155,15 @@ def killDivs(parent):
                     d.extract()
     
 
-def upgradeLink(link):
-    
+def fetchLink(link, numPosts=5):
     link = link.encode('utf-8')
-    
-    if (not (link.startswith("http://news.ycombinator.com") or link.endswith(".pdf"))):
-        linkFile = "upgraded/" + re.sub(PUNCTUATION, "_", link)
-        if (os.path.exists(linkFile)):
-            return open(linkFile).read()
-        else:
-            content = ""
-            try:
-                html = urllib.urlopen(link).read()
-                content = grabContent(link, html)
-                filp = open(linkFile, "w")
-                filp.write(content)
-                filp.close()
-            except IOError:
-                pass
-            return content
-    else:
-        return ""
-    
-    
+    content = ""
+    try:
+        html = urllib.urlopen(link).read()
+        content = grabContent(link, html, numPosts)
+    except IOError:
+        pass
+    return content
 
 def upgradeFeed(feedUrl):
     
