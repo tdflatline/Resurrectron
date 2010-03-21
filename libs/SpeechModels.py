@@ -76,6 +76,7 @@ class TokenNormalizer:
                      ("i", "ve") : ("I", "have"),
                      ("i", "ll") : ("I", "will"),
                      ("i", "m") : ("I", "am"),
+                     ("sort", "a") : ("sort", "of"),
                      ("o", "rly") : ("oh", "really"),
                      ("ya", "rly") : ("yes", "really"),
                      ("wha", "chu") : ("what", "you"), # hack...

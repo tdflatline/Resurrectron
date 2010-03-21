@@ -22,6 +22,7 @@ from libs.SpeechModels import TokenNormalizer, PhraseGenerator
 from libs.tokenizer import word_tokenize, word_detokenize
 
 from libs.tagger import pos_tag
+from libs.summarize import SimpleSummarizer
 
 class CorpusSoul:
   def __init__(self, directory):
@@ -59,7 +60,16 @@ class CorpusSoul:
           pass
         # .post: long-winded material (blog/mailinglist posts, essays, articles, etc)
         elif f.endswith(".post"):
-          pass
+          fl = open(root+"/"+f, "r")
+          post = fl.read()
+          tweets = self.post_to_tweets(post)
+          for txt in tweets:
+            tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
+            if tokens:
+              self.vocab.update(tokens)
+              tagged_tweet = pos_tag(tokens)
+              if tagged_tweet: tagged_tweets.append(tagged_tweet)
+              print "Loaded post-tweet #"+str(len(tagged_tweets))
         # .irclog: irc log files. irssi format.
         elif f.endswith(".irclog"):
           pass
@@ -68,6 +78,24 @@ class CorpusSoul:
           pass
 
     self.tagged_tweets = tagged_tweets
+
+  def post_to_tweets(self, post, summarize=False):
+    # We do poorly with parentheticals. Just kill them.
+    post = re.sub(r"\([^\)]+\)", "", post)
+    if summarize:
+      summ = SimpleSummarizer()
+      post = summ.summarize(post, 6)
+    sentences = nltk.sent_tokenize(post)
+    tweets = []
+    tweet = ""
+    for s in sentences:
+      if len(s) > 140: continue
+      if len(tweet + s) < 140:
+        tweet += s
+      else:
+        if tweet: tweets.append(tweet)
+        tweet = ""
+    return tweets
 
 def main():
   try:

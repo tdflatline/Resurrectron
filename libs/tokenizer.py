@@ -59,6 +59,7 @@ class TreebankWordTokenizer(TokenizerI):
                      re.compile(r"(?i)\b(T)(was)\b"),
                      re.compile(r"(?i)\b(I)(ve)\b"),
                      re.compile(r"(?i)\b(no)(thx)\b"),
+                     re.compile(r"(?i)\b(sort)(a)\b"),
                      re.compile(r"(?i)\b(o)(rly)\b"),
                      re.compile(r"(?i)\b(ya)(rly)\b"),
                      re.compile(r"(?i)\b(Wha)(chu)\b"), # Hack...
