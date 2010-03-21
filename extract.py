@@ -67,30 +67,7 @@ class CorpusSoul:
         elif f.endswith(".4sq"):
           pass
 
-    for t in tagged_tweets:
-      words = map(lambda x: x[0], t)
-      # Need to compute finals scores for normalzier to be able to denormalize
-      self.normalizer.score_tokens(words)
-
     self.tagged_tweets = tagged_tweets
-
-# Lousy hmm can't be pickled
-class SoulWriter:
-  def __init__(self):
-    pass
-
-  @classmethod
-  def write(cls, soul, f):
-    voice = soul.voice
-    soul.voice = None
-    pickle.dump(soul, f)
-    soul.voice = voice
-
-  @classmethod
-  def load(cls, f):
-    soul = pickle.load(f)
-    soul.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
-    return soul
 
 def main():
   try:
@@ -99,7 +76,9 @@ def main():
     traceback.print_exc()
     print "No soul file found. Regenerating."
     soul = CorpusSoul('target_user')
-    pickle.write(soul, bz2.BZ2File("target_user.soul", "w"))
+    pickle.dump(soul, bz2.BZ2File("target_user.soul", "w"))
+
+  soul.normalizer.verify_scores()
 
   voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
 

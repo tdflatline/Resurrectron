@@ -188,8 +188,8 @@ class TokenNormalizer:
 
     # FIXME: Make this recursive to catch nested versions?
     for r in self.mono_regex:
-      norm_word = re.sub(r[0], r[1], word_orig)
-      if norm_word != word_orig:
+      norm_word = re.sub(r[0], r[1], word)
+      if norm_word != word:
         if norm_word not in self.mono_counts: self.mono_counts[norm_word] = 0
         self.mono_counts[norm_word] += 1
 
@@ -231,7 +231,7 @@ class TokenNormalizer:
       if score >= choose:
         return d
 
-  def score_tokens(self, tokens):
+  def _count_tokens(self, tokens):
     for t in tokens:
       curr = t.lower()
       if curr in self.mono_counts:
@@ -250,6 +250,26 @@ class TokenNormalizer:
         else:
           self.dual_totals[tup] += 1
       i+=1
+
+  def verify_scores(self):
+    for i in self.mono_counts.iterkeys():
+      if i not in self.mono_totals:
+        print "Key "+str(i)+" present in mono_counts but missing from totals"
+      elif self.mono_totals[i] < self.mono_counts[i]:
+        print str(i)+" has bogus mono_counts: "+str(self.mono_counts[i])+"/"+\
+              str(self.mono_totals[i])
+    for i in self.mono_totals.iterkeys():
+      if i not in self.mono_counts:
+        print "Key "+str(i)+" present in mono_totals but missing from counts"
+    for i in self.dual_counts.iterkeys():
+      if i not in self.dual_totals:
+        print "Key "+str(i)+" present in dual_counts but missing from totals"
+      elif self.dual_totals[i] < self.dual_counts[i]:
+        print str(i)+" has bogus dual_counts: "+str(self.dual_counts[i])+"/"+\
+              str(self.dual_totals[i])
+    for i in self.dual_totals.iterkeys():
+      if i not in self.dual_counts:
+        print "Key "+str(i)+" present in dual_totals but missing from counts"
 
   def normalize_tokens(self, tokens):
     ret_tokens = []
@@ -303,6 +323,7 @@ class TokenNormalizer:
       # Add .
       if not curses.ascii.ispunct(ret_tokens[-1][-1]):
         ret_tokens.append(".")
+    self._count_tokens(ret_tokens)
     return ret_tokens
 
   def denormalize_tokens(self, tokens):
@@ -367,7 +388,7 @@ class TokenNormalizer:
       print nt
     print ""
     for nt in norm_tokens:
-      norm.score_tokens(nt)
+      norm._count_tokens(nt)
     denorm_tokens = []
     for nt in norm_tokens:
       dt = norm.denormalize_tokens(nt)

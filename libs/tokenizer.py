@@ -85,7 +85,9 @@ class TreebankWordTokenizer(TokenizerI):
         text = re.sub(r'(\:)([^\/][^\/])', r' \1 \2 ', text)
 
         # Separate periods into consecutive groups
+        # XXX: SPlit these out individually for the HMM?
         text = re.sub(r'([\.]+(?:[\s]|$))', r' \1 ', text)
+        text = re.sub(r'([\.]{2,})', r' \1 ', text)
 
         # Separate - if they have non-alphas between them
         text = re.sub(r'(\W)-(\W)', r'\1 - \2', text)
@@ -152,7 +154,7 @@ def word_detokenize(tokens):
 
 def main():
   tok = TreebankWordTokenizer()
-  print tok.tokenize("Hi a-ok g+money I&I. www.foo.com? www.foo.com. www.goo.com/")
+  print tok.tokenize("Hi a-ok.... g+money I&I. You..like? www.foo.com? www.foo.com. www.goo.com/")
   print tok.detokenize(["25%", "predict", "a lot", "of", "G-Unit", "45%", "fashion"])
   print tok.detokenize(tok.tokenize("I&u are+teh best @ 7:30 pm 1:30. a-hi."))
 

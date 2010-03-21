@@ -620,6 +620,8 @@ def main():
   except Exception,e:
     traceback.print_exc()
 
+  soul.normalizer.verify_scores()
+
   try:
     brain = BrainReader.load("target_user.brain")
     brain.restart(soul)

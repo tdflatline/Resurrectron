@@ -62,6 +62,9 @@ class AGFLTweaker:
       nltk_tags.remove(("'s", "POS"))
       tokens.remove("'s")
 
+  # FIXME: Can we do anything clever with "!1!1!1" and "?//?/1!/"?
+  # AGFL also hates "..,"
+  # FIXME: This needs context...
   bad_affix = ["^[\#\@\']", "[\']$"]
   replace = ["^[\/\*\']", "[\/\*\']$"] # => ""
   def __init__(self):
@@ -82,7 +85,6 @@ class AGFLTweaker:
           tags[i] = s
     return tags
 
-  # FIXME: This needs context...
   def deprune(self, pos_tags):
     for i in xrange(len(pos_tags)):
       if pos_tags[i][0] in self.sub_map:
@@ -128,7 +130,7 @@ def pos_tag(tokens):
       if not s:
         print "Empty string for: "+str(stokens)
         continue
-      print "Parsing: |"+s+"|"
+      #print "Parsing: |"+s+"|"
       agfl_tree = agfl.parse_sentence(s)
       if not agfl_tree:
         print "Parse fail for |"+s+"|"
