@@ -191,8 +191,8 @@ class SearchableText:
 
     if not curses.ascii.ispunct(text[-1]): text += "."
 
-    # FIXME: We should remove the tagged tokens and possibly the tokens
-    # too. This eats a lot of storage. But bzip2 makes it not matter..
+    # XXX: We should remove the tokens and possibly the tagged_tokens
+    # too. This eats a lot of storage and takes time to compress..
     self.tagged_tokens = tagged_tokens
     if tokens: self.tokens = tokens
     else: self.tokens = word_tokenize(text)
@@ -233,8 +233,11 @@ class SearchableText:
            new_terms.update(en.list.flatten(mod.hypernym(sv)))
            new_terms.update(en.list.flatten(mod.hyponym(sv)))
       self.vocab.update(new_terms)
+      # XXX: This kills doc frequency.
       self.search_tokens = list(self.vocab)
 
+  # XXX: Make this use a map. Then we can get rid of search_tokens
+  # and vocab
   def count(self, word):
     return self.search_tokens.count(word)
 
