@@ -78,7 +78,7 @@ class EP4irParseTree:
 
       # XXX: AGFL sucks at labeling #'s
       if word.isdigit():
-        tag = "NUMB(dig)"
+        tag = "NUM(card)"
 
       if not tag and word[0] == "-":
         # punctuation

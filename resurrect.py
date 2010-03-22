@@ -9,6 +9,7 @@ except:
   print "Psyco JIT not found. Queries will run MUCH slower."
 
 import bz2
+import gzip
 import nltk
 import re
 import cPickle as pickle
@@ -287,6 +288,9 @@ class SearchableTextCollection:
       return
 
   def update_matrix(self):
+    if not self.needs_update:
+      print "No update needed"
+      return
     print "Computing score matrix."
     self.D = []
     for doc in self.texts:
@@ -419,7 +423,7 @@ class SearchableTextCollection:
 #
 # It also manages a separate worker thread for generating more pending tweets.
 class TwitterBrain:
-  def __init__(self, soul, pending_goal=1500, low_watermark=1400):
+  def __init__(self, soul, pending_goal=1500, low_watermark=1415):
     # Need an ordered list of vocab words for SearchableTextCollection.
     # If it vocab changes, we fail.
     for t in easter_eggs.xkcd: soul.vocab.update(t.vocab)
@@ -435,7 +439,7 @@ class TwitterBrain:
     self.last_vect = None
     self.restart(soul, pending_goal, low_watermark) # Must come last!
 
-  def restart(self, soul, pending_goal=1500, low_watermark=1400):
+  def restart(self, soul, pending_goal=1500, low_watermark=1415):
     self.low_watermark = low_watermark
     self.pending_goal = pending_goal
     self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
@@ -537,11 +541,11 @@ class TwitterBrain:
     first_run = True
     while not self._shutdown:
       added_tweets = False
-      if len(self.remove_tweets) > 50:
+      if len(self.remove_tweets) > 90:
         self.__lock()
         while len(self.remove_tweets) > 0:
           self.pending_tweets.remove_text(self.remove_tweets.pop())
-        self.pending_tweets.update_matrix()
+        added_tweets = True
         self.__unlock()
 
       # Need low watermark. Maybe goal-100?
@@ -560,21 +564,26 @@ class TwitterBrain:
           added_tweets = True
           self.__unlock()
 
-          if len(self.pending_tweets.texts) % \
-                ((self.pending_goal-self.low_watermark)) == 0:
+          if len(self.pending_tweets.texts) % 100 == 0:
             break # Perform other work
-      if len(self.pending_tweets.texts) == self.pending_goal:
+
+      time.sleep(2)
+
+      if len(self.pending_tweets.texts) == self.pending_goal and added_tweets:
+        print "At full tweet count "+str(self.pending_goal)
         self.__lock()
         self.pending_tweets.update_matrix()
         self.__unlock()
         first_run=False
         BrainReader.write(self, "target_user.brain", True)
-        print "At full tweet count "+str(self.pending_goal)
       elif added_tweets:
+        self.__lock()
         print "At tweet count "+str(len(self.pending_tweets.texts))+\
                   "/"+str(self.pending_goal)
+        self.pending_tweets.update_matrix()
+        self.__unlock()
         BrainReader.write(self, "target_user.brain")
-      time.sleep(3)
+      time.sleep(2)
 
 # Lousy hmm can't be pickled
 class BrainReader:
@@ -583,8 +592,10 @@ class BrainReader:
     (voice,thread,lock) = (brain.voice,brain._thread,brain.work_lock)
     lock.acquire()
     (brain.voice,brain._thread,brain.work_lock) = (None,None,None)
-    if bzip2: pickle.dump(brain, bz2.BZ2File(fname+".part", "w"))
+    print "Writing brain file. This may take some time.."
+    if bzip2: pickle.dump(brain, gzip.GzipFile(fname+".part", "w"))
     else: pickle.dump(brain, open(fname+".part", "w"))
+    print "Brain file written..."
     (brain.voice,brain._thread,brain.work_lock) = (voice,thread,lock)
     os.rename(fname+".part", fname)
     lock.release()
@@ -592,9 +603,13 @@ class BrainReader:
   @classmethod
   def load(cls, fname):
     try:
+      print "Loading brain file. This may take some time..."
       brain = pickle.load(open(fname, "r"))
+    except pickle.UnpicklingError:
+      brain = pickle.load(gzip.GzipFile(fname, "r"))
     except KeyError:
-      brain = pickle.load(bz2.BZ2File(fname, "r"))
+      brain = pickle.load(gzip.GzipFile(fname, "r"))
+    print "Brain file loaded."
     return brain
 
 class StdinLoop(cmd.Cmd):
