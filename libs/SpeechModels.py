@@ -357,21 +357,30 @@ class TokenNormalizer:
     else:
       cap_sentences = False
 
+    did_cap_word = False
     for i in xrange(len(ret_tokens)):
       if ret_tokens[i] != "I" and ret_tokens[i].isupper(): continue
       ltoken = ret_tokens[i].lower()
 
-      # XXX: Hrmm. maybe we should have a seperate stat for ALL lowercase..
       if ltoken in self.capital_words and ltoken not in self.lowercase_words:
         chance = float(self.capital_words[ltoken][0])
         chance = chance/(chance+self.capital_words[ltoken][1])
         if chance > 0.75 or (chance > 0.5 and random.random() < chance):
           ret_tokens[i] = ret_tokens[i][0].upper()+ret_tokens[i][1:]
+          did_cap_word = True
           continue
-      if cap_sentences and (i==0 or ret_tokens[i-1][-1] in ".?!"):
-        ret_tokens[i] = ret_tokens[i][0].upper()+ret_tokens[i][1:]
-        continue
       ret_tokens[i] = ltoken
+
+    if cap_sentences or did_cap_word:
+      for i in xrange(len(ret_tokens)):
+        if ret_tokens[i] != "I" and ret_tokens[i].isupper(): continue
+        ltoken = ret_tokens[i].lower()
+
+        if (i==0 or ret_tokens[i-1][-1] in ".?!"):
+          ret_tokens[i] = ret_tokens[i][0].upper()+ret_tokens[i][1:]
+          continue
+        ret_tokens[i] = ltoken
+
     return ret_tokens
 
   @classmethod
