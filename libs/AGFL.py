@@ -76,11 +76,15 @@ class EP4irParseTree:
         tags.append((tag, ""))
         continue
 
-      # XXX: AGFL sucks at labeling #'s
+      # XXX: Sometimes AGFL cites a parent leaf with [1] or [2]..
+      # Usually it does this when its broken, but sometimes it actually
+      # has correctly inferred a NOUN/VERB POS position.
+
+      # AGFL sucks at labeling #'s
       if word.isdigit():
         tag = "NUM(card)"
 
-      # XXX: it also sucks at "I".
+      # it also sucks at "I".
       if not tag and (word == "I" or word == "i"):
         tag = "PERSPRON(sing,first,nom)"
 

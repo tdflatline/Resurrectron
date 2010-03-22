@@ -53,9 +53,10 @@ class POSTrim:
 # WP: WH-pronoun (that)
 # WP$: WH-pronoun, possessive (whose)
 # WRB: Wh-adverb (how, why)
+# EX: existential there
 class QueryStripper:
   kill_pos = set(["RP", "CC", "MD", "PDT", "POS", "TO", "WDT", "WP", "WP$",
-                  "WRB"])
+                  "WRB", "DT", "EX", "."])
   @classmethod
   def strip_tagged_query(cls, tagged_query):
     ret = []
@@ -586,7 +587,8 @@ class TwitterBrain:
                   "/"+str(self.pending_goal)
         self.pending_tweets.update_matrix()
         self.__unlock()
-        BrainReader.write(self, "target_user.brain")
+        if len(self.pending_tweets.texts) % 500 == 0:
+          BrainReader.write(self, "target_user.brain")
       time.sleep(2)
 
 # Lousy hmm can't be pickled

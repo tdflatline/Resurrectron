@@ -40,6 +40,7 @@ class TokenNormalizer:
                     "=":"is", "i":"I", "y":"why", "o":"oh", "rly":"really",
                     "tite":"tight", "holla":"holler", "tmrw":"tomorrow",
                     "hai":"hi", "sez":"says", "haz":"has",
+                    "ppl":"people", "ppls":"people", "pplz":"people",
                     "dat":"that", "deez":"these", "dees":"these" }
 
     # Make sure capital words are always capitalized for POS tag
@@ -83,6 +84,7 @@ class TokenNormalizer:
                      ("sort", "a") : ("sort", "of"),
                      ("o", "rly") : ("oh", "really"),
                      ("ya", "rly") : ("yes", "really"),
+                     # FIXME: These need a tri_map.. "dunno" too
                      ("wha", "chu") : ("what", "you"), # hack...
                      ("what", "chu") : ("what", "you"), # hack...
                      ("wha", "cha") : ("what", "you"), # hack...
