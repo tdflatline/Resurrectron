@@ -27,6 +27,9 @@ from libs.summarize import SimpleSummarizer
 class CorpusSoul:
   def __init__(self, directory):
     self.normalizer = TokenNormalizer()
+    # FIXME: http://www.w3schools.com/HTML/html_entities.asp
+    clean_ents = [("&lt;", "<"), ("&gt;", ">"),
+                  ("&amp;", "&")]
     tagged_tweets = []
     self.vocab = set([])
     for root, dirs, files in os.walk(directory):
@@ -40,6 +43,8 @@ class CorpusSoul:
             txt = tweet['text'].encode('ascii', 'ignore')
             if re.search("( |^)RT(:| )", txt, re.IGNORECASE): continue
             if txt[0] == '@': txt = re.sub('^@[\S]+ ', '', txt)
+            for e in clean_ents:
+              txt = re.sub(e[0], e[1], txt)
             tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
             self.vocab.update(tokens)
             tagged_tweet = pos_tag(tokens)
@@ -52,6 +57,8 @@ class CorpusSoul:
             txt = tweet.encode('ascii', 'ignore')
             if txt.startswith('RT'): continue
             if txt[0] == '@': txt = re.sub('^@[\S]+ ', '', txt)
+            for e in clean_ents:
+              txt = re.sub(e[0], e[1], txt)
             tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
             self.vocab.update(tokens)
             tagged_tweet = pos_tag(tokens)
@@ -64,6 +71,8 @@ class CorpusSoul:
           post = fl.read()
           tweets = self.post_to_tweets(post)
           for txt in tweets:
+            for e in clean_ents:
+              txt = re.sub(e[0], e[1], txt)
             tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
             if tokens:
               self.vocab.update(tokens)

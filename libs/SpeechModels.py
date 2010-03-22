@@ -374,12 +374,10 @@ class TokenNormalizer:
     if cap_sentences or did_cap_word:
       for i in xrange(len(ret_tokens)):
         if ret_tokens[i] != "I" and ret_tokens[i].isupper(): continue
-        ltoken = ret_tokens[i].lower()
 
         if (i==0 or ret_tokens[i-1][-1] in ".?!"):
           ret_tokens[i] = ret_tokens[i][0].upper()+ret_tokens[i][1:]
           continue
-        ret_tokens[i] = ltoken
 
     return ret_tokens
 
