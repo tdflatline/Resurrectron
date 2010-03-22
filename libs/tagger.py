@@ -73,6 +73,7 @@ class AGFLTweaker:
   # TODO: ["[a-z]/[a-z]"] => " or "
   def prune(self, tags):
     for i in xrange(len(tags)):
+      if tags[i] == "'s" or tags[i] == "'S": continue
       for r in self.bad_affix:
         s = re.sub(r, "", tags[i])
         if s != tags[i]:
@@ -137,7 +138,8 @@ class AGFLTweaker:
       if n-offset >= len(agfl_tags): break
       word_chunk = agfl_tags[n-offset][0].lower()
       tags_joined = [agfl_tags[n-offset][1]]
-      add = (len(agfl_tags[n-offset][0].split())-1)
+      add = len(word_tokenize(" "+agfl_tags[n-offset][0]+" "))-1
+      #add = (len(agfl_tags[n-offset][0].split())-1)
       #if add: print "Adding "+str(add)+" for "+agfl_tags[n-offset][0]
       for a in xrange(n+1-offset, len(agfl_tags)):
         tags_joined.append(agfl_tags[a][1])
@@ -188,10 +190,10 @@ def pos_tag(tokens):
     all_tags = []
     for s in sentences:
       stokens = word_tokenize(s)
-      nltk_tags = nltk.pos_tag(stokens)
       tweaker = AGFLTweaker()
-      tweaker.agfl_fix(stokens, nltk_tags)
       tweaker.prune(stokens)
+      nltk_tags = nltk.pos_tag(stokens)
+      tweaker.agfl_fix(stokens, nltk_tags)
       s = word_detokenize(stokens)
       if not s:
         print "Empty string for: "+str(stokens)
@@ -205,8 +207,8 @@ def pos_tag(tokens):
         tags = agfl_tree.pos_tag()
         tags = tweaker.agfl_split(tags)
         did_join = tweaker.agfl_join(tags, stokens)
-        tweaker.deprune(tags)
         tweaker.agfl_repair(tags, nltk_tags)
+        tweaker.deprune(tags)
         # Verify that we have labels for everything.
         # If some are still missing, drop.
         if tags:
@@ -236,7 +238,6 @@ def main():
   print toks
   print pos_tag(word_tokenize("I expect it to go: omg, diaf and stuff."))
   print pos_tag(word_tokenize("Foo dogs by way of stillonlyjacks."))
-  print pos_tag(word_tokenize("How big was the dog?"))
 
 if __name__ == "__main__":
    main()

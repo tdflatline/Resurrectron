@@ -26,18 +26,18 @@ class TokenNormalizer:
 
     # One-to-one mapping, no context
     self.mono_map = { "u":"you", "r":"are", "m":"am", "c":"see",
-                    "n":"and", "n'":"and",
+                    "n":"and", "n'":"and", "yah":"yes",
                     "h8":"hate", "<3":"love", "thx":"thanks", "tnx":"thanks",
                     "teh":"the", "fb":"Facebook", "2nite":"tonight",
                     "ur" :"your", "dbag":"douche", "nye":"newyears",
                     "w/o":"without", "w/":"with", "b/c":"because",
                     "+":"and", "&":"and", "'em":"them", "st":"street",
                     "til":"until", "'till":"until", "phat":"fat",
-                    "totes":"totally", "stunnah":"stunner",
+                    "totes":"totally", "stunnah":"stunner", "txt":"text",
                     "4get":"forget", "4git":"forget", "4gt":"forget",
-                    "4got":"forgot", "gangsta":"gangster",
-                    "ya":"you", "yah":"yes", "=":"is", "dem":"them",#fishy
-                    "i":"I", "y":"why", "o":"oh", "rly":"really",
+                    "4got":"forgot", "gangsta":"gangster", "thru":"through",
+                    "ya":"you", "gen":"general", "dem":"them", "msg":"message",#fishy
+                    "=":"is", "i":"I", "y":"why", "o":"oh", "rly":"really",
                     "tite":"tight", "holla":"holler", "tmrw":"tomorrow",
                     "hai":"hi", "sez":"says", "haz":"has",
                     "dat":"that", "deez":"these", "dees":"these" }
