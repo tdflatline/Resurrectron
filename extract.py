@@ -7,7 +7,7 @@ try:
   psyco.full()
 except: pass
 
-import bz2
+import gzip
 import nltk
 import simplejson as json
 import os
@@ -99,12 +99,12 @@ class CorpusSoul:
 
 def main():
   try:
-    soul = pickle.load(bz2.BZ2File("target_user.soul", "r"))
+    soul = pickle.load(gzip.GzipFile("target_user.soul", "r"))
   except Exception,e:
     traceback.print_exc()
     print "No soul file found. Regenerating."
     soul = CorpusSoul('target_user')
-    pickle.dump(soul, bz2.BZ2File("target_user.soul", "w"))
+    pickle.dump(soul, gzip.GzipFile("target_user.soul", "w"))
 
   soul.normalizer.verify_scores()
 

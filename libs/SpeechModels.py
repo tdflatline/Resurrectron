@@ -25,20 +25,22 @@ class TokenNormalizer:
     self.skip_tokens = set(['"','(',')','[',']'])
 
     # One-to-one mapping, no context
-    self.mono_map = { "u":"you", "r":"are", "m":"am", "c":"see", "n":"and",
+    self.mono_map = { "u":"you", "r":"are", "m":"am", "c":"see",
+                    "n":"and", "n'":"and",
                     "h8":"hate", "<3":"love", "thx":"thanks", "tnx":"thanks",
                     "teh":"the", "fb":"Facebook", "2nite":"tonight",
                     "ur" :"your", "dbag":"douche", "nye":"newyears",
                     "w/o":"without", "w/":"with", "b/c":"because",
                     "+":"and", "&":"and", "'em":"them", "st":"street",
-                    "til":"until", "'till":"until",
+                    "til":"until", "'till":"until", "phat":"fat",
                     "totes":"totally", "stunnah":"stunner",
                     "4get":"forget", "4git":"forget", "4gt":"forget",
                     "4got":"forgot", "gangsta":"gangster",
-                    "ya":"you", "yah":"yes", "=":"is", #fishy
+                    "ya":"you", "yah":"yes", "=":"is", "dem":"them",#fishy
                     "i":"I", "y":"why", "o":"oh", "rly":"really",
-                    "tite":"tight", "holla":"holler",
-                    "hai":"hi", "sez":"says", "haz":"has" }
+                    "tite":"tight", "holla":"holler", "tmrw":"tomorrow",
+                    "hai":"hi", "sez":"says", "haz":"has",
+                    "dat":"that", "deez":"these", "dees":"these" }
 
     # Make sure capital words are always capitalized for POS tag
     f = open("/usr/share/dict/words", "r")

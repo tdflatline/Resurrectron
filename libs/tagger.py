@@ -65,7 +65,7 @@ class AGFLTweaker:
   # FIXME: Can we do anything clever with "!1!1!1" and "?//?/1!/"?
   # AGFL also hates ".."
   # FIXME: This needs context...
-  bad_affix = ["^[\#\@\']", "[\']$"]
+  bad_affix = ["^[\#\@]"]
   replace = ["^[\/\*\']", "[\/\*\']$"] # => ""
   def __init__(self):
     self.sub_map = {}
@@ -122,7 +122,7 @@ class AGFLTweaker:
     for i in xrange(len(agfl_tags)):
       if not agfl_tags[i][1]:
         # Split it.
-        toks = word_tokenize(agfl_tags[i][0])
+        toks = word_tokenize(" "+agfl_tags[i][0]+" ")
         for i in toks: new_agfl_tags.append((i, ""))
       else:
         new_agfl_tags.append(agfl_tags[i])
@@ -131,33 +131,39 @@ class AGFLTweaker:
   def agfl_join(self, agfl_tags, tokens):
     # AGFL can join or split words/urls. Rejoin split ones.
     offset = 0
+    n = 0
     did_replace = False
-    for n in xrange(len(tokens)-1):
+    while n < len(tokens):
       if n-offset >= len(agfl_tags): break
-      word_chunk = agfl_tags[n-offset][0]
+      word_chunk = agfl_tags[n-offset][0].lower()
       tags_joined = [agfl_tags[n-offset][1]]
       add = (len(agfl_tags[n-offset][0].split())-1)
+      #if add: print "Adding "+str(add)+" for "+agfl_tags[n-offset][0]
       for a in xrange(n+1-offset, len(agfl_tags)):
         tags_joined.append(agfl_tags[a][1])
-        word_chunk += agfl_tags[a][0]
-        if tokens[n] == word_chunk:
-          for i in xrange(n-offset,a+1-offset): agfl_tags.pop(n-offset)
-          tag = (word_chunk, self.tag_vote(tags_joined))
+        word_chunk += agfl_tags[a][0].lower()
+        #print word_chunk+" == "+tokens[n].lower()
+        if tokens[n].lower() == word_chunk:
+          for i in xrange(n-offset,a+1):
+             agfl_tags.pop(n-offset)
+          tag = (tokens[n], self.tag_vote(tags_joined))
           agfl_tags.insert(a-1, tag)
           did_replace = True
           break
       offset += add
+      n += add
+      n += 1
     return did_replace
 
   def agfl_repair(self, agfl_tags, nltk_tags):
     # This is somewhat hackish
-    # XXX: Agfl will lowercase some words!. Esp "I"
     for a in xrange(len(agfl_tags)):
       if not agfl_tags[a][1] or agfl_tags[a][1] == "WORD" or \
             agfl_tags[a][1].isspace():
         closest = -1
         for n in xrange(len(nltk_tags)):
-          if agfl_tags[a][0] == nltk_tags[n][0]:
+          # Agfl will lowercase some words!. Esp "I"
+          if agfl_tags[a][0].lower() == nltk_tags[n][0].lower():
             if closest > 0:
               print "Two tags found for "+agfl_tags[a][0]
               if abs(a-n) > abs(a-closest):
@@ -228,7 +234,9 @@ def main():
   print toks
   tweaker.deprune(toks)
   print toks
-  print pos_tag(word_tokenize("@John, I am going to the #store. Will you #come with me?"))
+  print pos_tag(word_tokenize("I expect it to go: omg, diaf and stuff."))
+  print pos_tag(word_tokenize("Foo dogs by way of stillonlyjacks."))
+  print pos_tag(word_tokenize("How big was the dog?"))
 
 if __name__ == "__main__":
    main()

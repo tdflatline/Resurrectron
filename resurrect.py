@@ -8,7 +8,6 @@ try:
 except:
   print "Psyco JIT not found. Queries will run MUCH slower."
 
-import bz2
 import gzip
 import nltk
 import re
@@ -638,11 +637,11 @@ def main():
   soul = None
 
   try:
-    soul = pickle.load(bz2.BZ2File("target_user.soul", "r"))
+    soul = pickle.load(gzip.GzipFile("target_user.soul", "r"))
   except IOError:
     print "No soul file found. Regenerating."
     soul = CorpusSoul('target_user')
-    pickle.dump(soul, bz2.BZ2File("target_user.soul", "w"))
+    pickle.dump(soul, gzip.GzipFile("target_user.soul", "w"))
   except Exception,e:
     traceback.print_exc()
 
