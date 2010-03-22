@@ -80,6 +80,10 @@ class EP4irParseTree:
       if word.isdigit():
         tag = "NUM(card)"
 
+      # XXX: it also sucks at "I".
+      if not tag and (word == "I" or word == "i"):
+        tag = "PERSPRON(sing,first,nom)"
+
       if not tag and word[0] == "-":
         # punctuation
         tag = word

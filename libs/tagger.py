@@ -91,8 +91,67 @@ class AGFLTweaker:
         pos_tags[i] = (self.sub_map[pos_tags[i][0]], pos_tags[i][1])
     return pos_tags
 
+  def tag_vote(self, tags):
+    # Noun, then verb, then adj/adv
+    # Take majority of the tags
+    vote_map = {}
+    for t in tags:
+      if not t: continue
+      if "NOUN" in t: return t
+      if t not in vote_map: vote_map[t] = 0
+      vote_map[t] += 1
+
+    for t in tags:
+      if "VERB" in t: return t
+    for t in tags:
+      if "ADJ" in t: return t
+    for t in tags:
+      if "ADV" in t: return t
+
+    max_key = None
+    for t in vote_map.iterkeys():
+      if not max_key: max_key = t
+      if vote_map[t] > vote_map[max_key]:
+        max_key = t
+
+    if max_key: return max_key
+    else: return ""
+
+  def agfl_split(self, agfl_tags):
+    new_agfl_tags = []
+    for i in xrange(len(agfl_tags)):
+      if not agfl_tags[i][1]:
+        # Split it.
+        toks = word_tokenize(agfl_tags[i][0])
+        for i in toks: new_agfl_tags.append((i, ""))
+      else:
+        new_agfl_tags.append(agfl_tags[i])
+    return new_agfl_tags
+
+  def agfl_join(self, agfl_tags, tokens):
+    # AGFL can join or split words/urls. Rejoin split ones.
+    offset = 0
+    did_replace = False
+    for n in xrange(len(tokens)-1):
+      if n-offset >= len(agfl_tags): break
+      word_chunk = agfl_tags[n-offset][0]
+      tags_joined = [agfl_tags[n-offset][1]]
+      add = (len(agfl_tags[n-offset][0].split())-1)
+      for a in xrange(n+1-offset, len(agfl_tags)):
+        tags_joined.append(agfl_tags[a][1])
+        word_chunk += agfl_tags[a][0]
+        if tokens[n] == word_chunk:
+          for i in xrange(n-offset,a+1-offset): agfl_tags.pop(n-offset)
+          tag = (word_chunk, self.tag_vote(tags_joined))
+          agfl_tags.insert(a-1, tag)
+          did_replace = True
+          break
+      offset += add
+    return did_replace
+
   def agfl_repair(self, agfl_tags, nltk_tags):
     # This is somewhat hackish
+    # XXX: Agfl will lowercase some words!. Esp "I"
     for a in xrange(len(agfl_tags)):
       if not agfl_tags[a][1] or agfl_tags[a][1] == "WORD" or \
             agfl_tags[a][1].isspace():
@@ -110,6 +169,7 @@ class AGFLTweaker:
             else:
               #print nltk_tags[n][1]+" not in nltk map!"
               agfl_tags[a] = (nltk_tags[n][0], nltk_tags[n][1])
+    return agfl_tags
 
 agfl = AGFL.AGFLWrapper()
 # XXX: Maybe rewrite tweaker.prune() to be
@@ -137,9 +197,19 @@ def pos_tag(tokens):
         return None # Hrmm. use partials? Prob not
       else:
         tags = agfl_tree.pos_tag()
-        tweaker.agfl_repair(tags, nltk_tags)
+        tags = tweaker.agfl_split(tags)
+        did_join = tweaker.agfl_join(tags, stokens)
         tweaker.deprune(tags)
+        tweaker.agfl_repair(tags, nltk_tags)
+        # Verify that we have labels for everything.
+        # If some are still missing, drop.
         if tags:
+          for t in tags:
+            if not t[1]:
+              print "Tag fail for: |"+s+"|"
+              print str(tags)
+              if did_join: print "Failed with attempted join: "+str(stokens)
+              return None
           all_tags.extend(tags)
         else:
           print "Tag fail for |"+s+"|"

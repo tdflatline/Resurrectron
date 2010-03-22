@@ -26,7 +26,7 @@ class TokenNormalizer:
 
     # One-to-one mapping, no context
     self.mono_map = { "u":"you", "r":"are", "m":"am", "c":"see", "n":"and",
-                    "h8":"hate", "<3":"love", "thx":"thanks",
+                    "h8":"hate", "<3":"love", "thx":"thanks", "tnx":"thanks",
                     "teh":"the", "fb":"Facebook", "2nite":"tonight",
                     "ur" :"your", "dbag":"douche", "nye":"newyears",
                     "w/o":"without", "w/":"with", "b/c":"because",
@@ -37,7 +37,8 @@ class TokenNormalizer:
                     "4got":"forgot", "gangsta":"gangster",
                     "ya":"you", "yah":"yes", "=":"is", #fishy
                     "i":"I", "y":"why", "o":"oh", "rly":"really",
-                    "tite":"tight", "holla":"holler" }
+                    "tite":"tight", "holla":"holler",
+                    "hai":"hi", "sez":"says", "haz":"has" }
 
     # Make sure capital words are always capitalized for POS tag
     f = open("/usr/share/dict/words", "r")

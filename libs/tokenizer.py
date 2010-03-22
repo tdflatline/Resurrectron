@@ -36,6 +36,7 @@ class TreebankWordTokenizer(TokenizerI):
     abbreviations, etc), and are not separately tokenized. 
     """
     # List of contractions adapted from Robert MacIntyre's tokenizer.
+    # FIXME: "Dunno" -> do not know... need to use 3 tuples :(
     CONTRACTIONS2 = [re.compile(r"(?i)(.)('ll|'re|'ve|n't|'s|'m|'d)\b"),
                      re.compile(r"(?i)\b(Mor)('n)\b"),
                      re.compile(r"(?i)\b(D)('ye)\b"),
@@ -155,8 +156,9 @@ def word_detokenize(tokens):
 
 def main():
   tok = TreebankWordTokenizer()
-  print tok.tokenize("Hi a-ok.... g+money I&I. You..like? www.foo.com? www.foo.com. www.goo.com/")
+  print tok.tokenize("Hi a-ok.... g+money I&I. You..like? www.foo.com? www.foo.com. www.goo.com/ ")
   print tok.detokenize(["25%", "predict", "a lot", "of", "G-Unit", "45%", "fashion"])
+  print tok.tokenize("I&u are+teh best @ 7:30 pm 1:30. a=hi.")
   print tok.detokenize(tok.tokenize("I&u are+teh best @ 7:30 pm 1:30. a=hi."))
 
 

@@ -322,7 +322,6 @@ class SearchableTextCollection:
     q = []
     for dt in self.vocab:
       if dt in query_text.vocab:
-        print "Found in text: "+str(dt)
         q.append(self.tf_idf(dt, query_text))
       else: q.append(0.0)
 
@@ -388,6 +387,7 @@ class SearchableTextCollection:
     for i in xrange(randomize_top):
       count += sorted_scores[i][0]
       if count >= choice:
+        self.print_score(q, self.D[sorted_scores[i][1]])
         print "Rand score: "+str(sorted_scores[i][0])+"/"+str(sorted_scores[0][0])
         print "Choice: "+str(choice)+" count: "+str(count)+" top_quater: "+str(top_quart)
         return (self.D[sorted_scores[i][1]],
@@ -395,6 +395,11 @@ class SearchableTextCollection:
     print "WTF? No doc found: "+str(count)+" "+str(tot_score)
     retidx = random.randint(0, len(self.texts)-1)
     return (self.D[retidx], self.texts[retidx])
+
+  def print_score(self, q, resp):
+    for i in xrange(len(resp)):
+      if q[i]*resp[i] > 0:
+        print "Found match |"+self.vocab[i]+"| score: "+str(q[i]*resp[i])
 
   def tf(self, term, text):
     """ The frequency of the term in text. """
@@ -483,7 +488,7 @@ class TwitterBrain:
         ret = random.choice(self.pending_tweets.texts)
         # hrmm.. make this a set? hrmm. depends on if its a hash
         # or pointer comparison.
-        if ret not in self.remove_tweets:
+        if not ret.hidden_text and ret not in self.remove_tweets:
           break
     self.remove_tweets.append(ret)
     self.already_tweeted.append(set(ret.tokens))
@@ -625,8 +630,8 @@ class StdinLoop(cmd.Cmd):
       sys.exit(0)
     else:
       (str_result, tokens, tagged_tokens) = self.brain.get_tweet("You", query)
-    print str_result
     print str(tagged_tokens)
+    print str_result
 
 def main():
   brain = None

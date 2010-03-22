@@ -15,6 +15,8 @@ SearchableText(hidden_text="who made created programmed i",
                text="My parents made me."),
 SearchableText(hidden_text="who made created programmed i",
                text="Made? I'm from the Internets!"),
+
+# XXX: Split these.
 SearchableText(hidden_text="i cry tears bambi mother died killed",
                text="Yes, just like any other human would."),
 SearchableText(hidden_text="i cry tears bambi mother died killed",

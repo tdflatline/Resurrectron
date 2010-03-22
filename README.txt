@@ -12,7 +12,8 @@ Quick steps:
    CDL3 to compile.
 3. Optional: Build the EP4ir grammar in ./libs/agfl_ep4/ with 'agfl ep4ir.gra'
 4. Use the harvest_*.py scripts to pull down a bunch of .jtwt files
-   from a twitter feed, or posts from a blog.
+   from a twitter feed, or posts from a blog. You can also create .twt files
+   by hand, which can contain 1 quote/quip per line.
 5. Throw them in the directory ./target_user/
 6. Run ./resurrect.py to generate a .soul file and a .brain file.
 7. Torment the AI to your hearts content.
@@ -20,7 +21,8 @@ Quick steps:
 
 Note that the .soul and .brain generation process takes quite some time.
 The brain generation process does run in the background while you chat
-with the AI as its brain forms.
+with the AI as its brain forms, but some of the answers may be delayed
+during this process.
 
 This is still hackware. Don't expect it to be too useful if you don't
 know python.
