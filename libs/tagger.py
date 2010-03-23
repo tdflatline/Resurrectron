@@ -71,6 +71,7 @@ class AGFLTweaker:
     self.sub_map = {}
 
   # TODO: ["[a-z]/[a-z]"] => " or "
+  # XXX: AGFL hates "!"
   def prune(self, tags):
     for i in xrange(len(tags)):
       if tags[i] == "'s" or tags[i] == "'S": continue
@@ -200,6 +201,7 @@ def pos_tag(tokens):
         continue
       #print "Parsing: |"+s+"|"
       agfl_tree = agfl.parse_sentence(s)
+      # XXX: We can re-try failed '?' with '.'..
       if not agfl_tree:
         print "Parse fail for |"+s+"|"
         return None # Hrmm. use partials? Prob not

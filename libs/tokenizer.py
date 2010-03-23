@@ -83,12 +83,17 @@ class TreebankWordTokenizer(TokenizerI):
         for regexp in self.CONTRACTIONS3:
             text = regexp.sub(r'\1 \2 \3', text)
 
-        # Separate most punctuation.
-        text = re.sub(r"([^\w\.\-\'\/,\:\*\@\#\s])", r' \1 ', text)
+        # Separate most punctuation that is against a word boundary.
+        # This was a good idea, but too volitile for AGFL to deal with for
+        # now..
+        #text = re.sub(r"(^|[\w\s])([^\w\.\-\'\"\/,\:\*\@\#\?\!\<\>\s]+)([\w\s]|$)",
+        #              r'\1 \2 \3', text)
 
-        # Separate :'s if they are not followed by numbers or spaces.
+        text = re.sub(r"([^\w\.\-\'\/,\:\!\?\<\>\*\@\#\s])", r' \1 ', text)
+
+        # Separate :'s if they are followed by numbers or spaces.
         # (urls or smilies)...
-        text = re.sub(r'(\:)([\s0-9]|$)', r' \1 \2', text)
+        text = re.sub(r'([\:\;])([\s0-9]|$)', r' \1 \2', text)
 
         # Separate - if they have non-alphas between them
         text = re.sub(r'(\W)-(\W)', r'\1 - \2', text)
@@ -106,8 +111,10 @@ class TreebankWordTokenizer(TokenizerI):
           text = re.sub(r"(?i)((?:^| )"+t+r")[\.]( |$)", r"\1=\2", text)
 
         # Split periods into groups.
-        text = re.sub(r'([\.]+(?:[\s]|$))', r' \1 ', text)
-        text = re.sub(r'([\.]{2,})', r' \1 ', text)
+        #text = re.sub(r'([\.\?\!]+(?:[\s]|$))', r' \1 ', text)
+        text = re.sub(r'(^|[\w\s\-\'\/,\<\>\*\@\#]+)((?:[1]*[\.\?\!\/]+[1]*)+)(?:[\s]|$)', r'\1 \2 ', text)
+        text = re.sub(r'(^|[\w\s\-\'\/,\<\>\*\@\#]+)((?:[1]*[\.\?\!\/]+[1]*){2,})', r'\1 \2 ', text)
+        #text = re.sub(r'([\.\?\!1]{3,})', r' \1 ', text)
 
         # Subsititute titles back.
         for t in self.TITLES + ['st']:
@@ -182,11 +189,12 @@ def word_detokenize(tokens):
 
 def main():
   tok = TreebankWordTokenizer()
-  print tok.tokenize("Hi a-ok.... g+money I&I. You..like? http://www.foo.com? www.foo.com. www.goo.com/ ")
+  print tok.tokenize("\\\"Hi a-ok.... g+money I&I. (You..like? :) http://www.foo.com? www.foo.com. www.goo.com/b")
+  print tok.detokenize(tok.tokenize("Hi a-ok.... g+money I&I. (You..like?) http://www.foo.com? www.foo.com. www.goo.com/ "))
   print tok.detokenize(["25%", "predict", "a lot", "of", "G-Unit", "45%", "fashion"])
-  print tok.tokenize("I&u are+teh best: @ 7:30 pm 1:30. a=hi.")
+  print tok.tokenize("...I&u are+teh best: @ 7:30 pm 1:30. a=hi.")
   print tok.detokenize(tok.tokenize("I&u are+teh best: @ 7:30 pm 1:30. a=hi."))
-  print tok.tokenize("Mr. Johnson's ate a Dr.'s hotdog on Main St. USA :p.")
+  print tok.tokenize("Mr. Johnson's ate a Dr.'s hotdog's w/ me b/c 2311 Main St. USA :p <3?!/?!11")
   print tok.detokenize(tok.tokenize("The Mr. Johnson ate a Dr.'s hotdog on Main St. USA"))
 
 
