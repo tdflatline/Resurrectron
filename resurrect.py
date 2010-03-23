@@ -67,27 +67,20 @@ class QueryStripper:
 
 #  - Subsitute @msgs: I/Me->You, Mine->Yours, My->Your
 class PronounInverter:
-  pronoun_21_map = { "you":"i", "yours":"mine","your":"my" }
+  pronoun_21_map = { "you":"i me", "yours":"mine","your":"my" }
   pronoun_12_map = { "i":"you", "me":"you", "mine":"yours","my":"your" }
 
-  # XXX: use (?i) instead of this casehack nonsense
   @classmethod
   def make_2nd_person(cls, string):
     for i in cls.pronoun_12_map.iterkeys():
-      chars = list(i)
-      casehack = ""
-      for c in chars: casehack += "["+c.lower()+c.upper()+"]"
-      string = re.sub("([^a-zA-Z]|^)"+casehack+"([^a-zA-Z]|$)",
+      string = re.sub(r"(?i)([^a-zA-Z]|^)"+i+"([^a-zA-Z]|$)",
                       "\\1"+cls.pronoun_12_map[i]+"\\2", string)
     return string
 
   @classmethod
   def make_1st_person(cls, string):
     for i in cls.pronoun_21_map.iterkeys():
-      chars = list(i)
-      casehack = ""
-      for c in chars: casehack += "["+c.lower()+c.upper()+"]"
-      string = re.sub("([^a-zA-Z]|^)"+casehack+"([^a-zA-Z]|$)",
+      string = re.sub(r"(?i)([^a-zA-Z]|^)"+i+"([^a-zA-Z]|$)",
                       "\\1"+cls.pronoun_21_map[i]+"\\2", string)
     return string
 
@@ -296,6 +289,7 @@ class SearchableTextCollection:
     if not self.needs_update:
       print "No update needed"
       return
+    # XXX: Woah. This matrix takes up one hell of a lot of RAM.
     print "Computing score matrix."
     self.D = []
     for doc in self.texts:
@@ -422,7 +416,9 @@ class SearchableTextCollection:
       if not matches:
         idf = 0.0
       else:
-        idf = math.log(float(len(self.texts)) / matches)
+        tot_words = sum(list(text.total_words for text in self.texts))
+        idf = math.log(float(tot_words) / matches)
+        #idf = math.log(float(len(self.texts)) / matches)
       self._idf_cache[term] = idf
     return idf
 
@@ -597,21 +593,24 @@ class TwitterBrain:
         self.pending_tweets.update_matrix()
         self.__unlock()
         if len(self.pending_tweets.texts) % 500 == 0:
-          BrainReader.write(self, "target_user.brain")
+          BrainReader.write(self, "target_user.brain", True)
       time.sleep(2)
 
 # Lousy hmm can't be pickled
 class BrainReader:
   @classmethod
   def write(cls, brain, fname, bzip2=False):
+    brain.work_lock.acquire()
     (voice,thread,lock) = (brain.voice,brain._thread,brain.work_lock)
-    lock.acquire()
     (brain.voice,brain._thread,brain.work_lock) = (None,None,None)
-    print "Writing brain file. This may take some time.."
+    (D,needs_update) = (brain.pending_tweets.D,brain.pending_tweets.needs_update)
+    (brain.pending_tweets.D, brain.pending_tweets.needs_update) = (None,True)
+    print "Writing brain file..."
     if bzip2: pickle.dump(brain, gzip.GzipFile(fname+".part", "w"))
     else: pickle.dump(brain, open(fname+".part", "w"))
     print "Brain file written..."
     (brain.voice,brain._thread,brain.work_lock) = (voice,thread,lock)
+    (brain.pending_tweets.D, brain.pending_tweets.needs_update) = (D,needs_update)
     os.rename(fname+".part", fname)
     lock.release()
 
@@ -648,7 +647,9 @@ def main():
   soul = None
 
   try:
+    print "Loading soul file..."
     soul = pickle.load(gzip.GzipFile("target_user.soul", "r"))
+    print "Loaded soul file."
   except IOError:
     print "No soul file found. Regenerating."
     soul = CorpusSoul('target_user')

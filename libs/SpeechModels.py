@@ -42,7 +42,8 @@ class TokenNormalizer:
                     "tite":"tight", "holla":"holler", "tmrw":"tomorrow",
                     "hai":"hi", "sez":"says", "haz":"has",
                     "ppl":"people", "ppls":"people", "pplz":"people",
-                    "dat":"that", "deez":"these", "dees":"these" }
+                    "dat":"that", "deez":"these", "dees":"these",
+                    "partay":"party" }
 
     # Make sure capital words are always capitalized for POS tag
     f = open("/usr/share/dict/words", "r")
