@@ -25,25 +25,26 @@ class TokenNormalizer:
     self.skip_tokens = set(['"','(',')','[',']'])
 
     # One-to-one mapping, no context
-    # XXX: "anon.", "Mr.", "Ms.", "Mrs.", "St."
     self.mono_map = { "u":"you", "r":"are", "m":"am", "c":"see",
                     "n":"and", "n'":"and", "yah":"yes",
                     "h8":"hate", "<3":"love", "thx":"thanks", "tnx":"thanks",
                     "teh":"the", "fb":"Facebook", "2nite":"tonight",
                     "ur" :"your", "dbag":"douche", "nye":"newyears",
                     "w/o":"without", "w/":"with", "b/c":"because",
-                    "+":"and", "&":"and", "'em":"them", "st":"street",
+                    "+":"and", "&":"and", "'em":"them",
                     "til":"until", "'till":"until", "phat":"fat",
                     "totes":"totally", "stunnah":"stunner", "txt":"text",
                     "4get":"forget", "4git":"forget", "4gt":"forget",
                     "4got":"forgot", "gangsta":"gangster", "thru":"through",
                     "ya":"you", "gen":"general", "dem":"them", "msg":"message",#fishy
+                    "st":"street", "st.":"street", "mr.":"mister", "mrs.":"missus",
+                    "ms.":"miss", "fr.":"father", "rev.":"reverend",
                     "=":"is", "i":"I", "y":"why", "o":"oh", "rly":"really",
                     "tite":"tight", "holla":"holler", "tmrw":"tomorrow",
                     "hai":"hi", "sez":"says", "haz":"has",
                     "ppl":"people", "ppls":"people", "pplz":"people",
                     "dat":"that", "deez":"these", "dees":"these",
-                    "partay":"party" }
+                    "partay":"party", "anon":"anonymous" }
 
     # Make sure capital words are always capitalized for POS tag
     f = open("/usr/share/dict/words", "r")
@@ -509,7 +510,7 @@ class PhraseGenerator:
     else:
       tokens = toks
       something=word_detokenize(toks)
-    return (something, tokens, tagged_tokens)
+    return (something, toks, tagged_tokens)
 
   def test_run(self):
     for mode in map(str, [30, 31, 32, 40, 41, 42, 43]):

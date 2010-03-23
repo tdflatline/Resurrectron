@@ -36,7 +36,6 @@ class TreebankWordTokenizer(TokenizerI):
     abbreviations, etc), and are not separately tokenized. 
     """
     # List of contractions adapted from Robert MacIntyre's tokenizer.
-    # FIXME: "Dunno" -> do not know... need to use 3 tuples :(
     CONTRACTIONS2 = [re.compile(r"(?i)(.)('ll|'re|'ve|n't|'s|'m|'d)\b"),
                      re.compile(r"(?i)\b(Mor)('n)\b"),
                      re.compile(r"(?i)\b(D)('ye)\b"),
@@ -63,17 +62,21 @@ class TreebankWordTokenizer(TokenizerI):
                      re.compile(r"(?i)\b(sort)(a)\b"),
                      re.compile(r"(?i)\b(o)(rly)\b"),
                      re.compile(r"(?i)\b(ya)(rly)\b"),
+                     re.compile(r"\b(I)(m)\b"),
+                     re.compile(r"\b(I)(ll)\b"),
+                     re.compile(r"(?i)\b(wo)(nt)\b"),
+                     # FIXME: "Dunno" -> do not know... need to use 3 tuples :(
                      re.compile(r"(?i)\b(Wha)(chu)\b"), # Hack...
                      re.compile(r"(?i)\b(Wha)(cha)\b"), # Hack...
                      re.compile(r"(?i)\b(What)(chu)\b"), # Hack...
                      re.compile(r"(?i)\b(What)(cha)\b"), # Hack...
-                     re.compile(r"(?i)\b(Whad)(ya)\b"), # Hack...
-                     re.compile(r"\b(I)(m)\b"),
-                     re.compile(r"\b(I)(ll)\b"),
-                     re.compile(r"(?i)\b(wo)(nt)\b")
+                     re.compile(r"(?i)\b(Whad)(ya)\b") # Hack...
                      ]
     CONTRACTIONS3 = [ re.compile(r"(?i)\b(Whad)(dd)(ya)\b")]
-    
+
+    # FIXME: re.compile these...
+    TITLES = ["mr", "mrs", "ms", "dr", "fr", "lt", "sgt", "rev"]
+
     def tokenize(self, text):
         for regexp in self.CONTRACTIONS2:
             text = regexp.sub(r'\1 \2', text)
@@ -81,15 +84,11 @@ class TreebankWordTokenizer(TokenizerI):
             text = regexp.sub(r'\1 \2 \3', text)
 
         # Separate most punctuation.
-        text = re.sub(r"([^\w\.\-\'\/,\:\*\@\#])", r' \1 ', text)
+        text = re.sub(r"([^\w\.\-\'\/,\:\*\@\#\s])", r' \1 ', text)
 
-        # Separate :'s if they are not followed by // (urls)
-        text = re.sub(r'(\:)([^\/][^\/])', r' \1 \2 ', text)
-
-        # Separate periods into consecutive groups
-        # XXX: SPlit these out individually for the HMM?
-        text = re.sub(r'([\.]+(?:[\s]|$))', r' \1 ', text)
-        text = re.sub(r'([\.]{2,})', r' \1 ', text)
+        # Separate :'s if they are not followed by numbers or spaces.
+        # (urls or smilies)...
+        text = re.sub(r'(\:)([\s0-9]|$)', r' \1 \2', text)
 
         # Separate - if they have non-alphas between them
         text = re.sub(r'(\W)-(\W)', r'\1 - \2', text)
@@ -97,6 +96,22 @@ class TreebankWordTokenizer(TokenizerI):
         # Separate commas if they're followed by space.
         # (E.g., don't separate 2,500)
         text = re.sub(r"(,\s)", r' \1', text)
+
+        # Handle "St." special. Watch for end of sentence.
+        text = re.sub(r"((?:^| )[Ss][Tt])[\.]([\s]+[^A-Z0-9])", r"\1_\2", text)
+
+        # Separate titles into consecutive groups. We know this
+        # is OK to do, because "_" would have been separated earlier.
+        for t in self.TITLES:
+          text = re.sub(r"(?i)((?:^| )"+t+r")[\.]( |$)", r"\1_\2", text)
+
+        # Split periods into groups.
+        text = re.sub(r'([\.]+(?:[\s]|$))', r' \1 ', text)
+        text = re.sub(r'([\.]{2,})', r' \1 ', text)
+
+        # Subsititute titles back.
+        for t in self.TITLES + ['st']:
+          text = re.sub(r"(?i)((?:^| )"+t+r")_", r"\1.", text)
 
         # Separate single quotes if they're followed by a space.
         #text = re.sub(r"('\s)", r' \1', text)
@@ -114,6 +129,17 @@ class TreebankWordTokenizer(TokenizerI):
         i = 0
         text = ""
         while i < tok_len-1:
+            ltok = tokens[i+1].lower()
+            found_title = False
+            for t in self.TITLES + ['st']:
+              if ltok == t+".":
+                found_title = True
+                break
+            if found_title:
+              text += tokens[i]+" "
+              i+=1
+              continue
+
             # Join up times
             if i < tok_len-2 and \
               (re.match("[\d]\+:\+[\d]",
@@ -156,10 +182,12 @@ def word_detokenize(tokens):
 
 def main():
   tok = TreebankWordTokenizer()
-  print tok.tokenize("Hi a-ok.... g+money I&I. You..like? www.foo.com? www.foo.com. www.goo.com/ ")
+  print tok.tokenize("Hi a-ok.... g+money I&I. You..like? http://www.foo.com? www.foo.com. www.goo.com/ ")
   print tok.detokenize(["25%", "predict", "a lot", "of", "G-Unit", "45%", "fashion"])
-  print tok.tokenize("I&u are+teh best @ 7:30 pm 1:30. a=hi.")
-  print tok.detokenize(tok.tokenize("I&u are+teh best @ 7:30 pm 1:30. a=hi."))
+  print tok.tokenize("I&u are+teh best: @ 7:30 pm 1:30. a=hi.")
+  print tok.detokenize(tok.tokenize("I&u are+teh best: @ 7:30 pm 1:30. a=hi."))
+  print tok.tokenize("Mr. Johnson's ate a Dr.'s hotdog on Main St. USA :p.")
+  print tok.detokenize(tok.tokenize("The Mr. Johnson ate a Dr.'s hotdog on Main St. USA"))
 
 
 if __name__ == "__main__":
