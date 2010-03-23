@@ -98,12 +98,12 @@ class TreebankWordTokenizer(TokenizerI):
         text = re.sub(r"(,\s)", r' \1', text)
 
         # Handle "St." special. Watch for end of sentence.
-        text = re.sub(r"((?:^| )[Ss][Tt])[\.]([\s]+[^A-Z0-9])", r"\1_\2", text)
+        text = re.sub(r"((?:^| )[Ss][Tt])[\.]([\s]+[^A-Z0-9])", r"\1=\2", text)
 
         # Separate titles into consecutive groups. We know this
-        # is OK to do, because "_" would have been separated earlier.
+        # is OK to do, because "=" would have been separated earlier.
         for t in self.TITLES:
-          text = re.sub(r"(?i)((?:^| )"+t+r")[\.]( |$)", r"\1_\2", text)
+          text = re.sub(r"(?i)((?:^| )"+t+r")[\.]( |$)", r"\1=\2", text)
 
         # Split periods into groups.
         text = re.sub(r'([\.]+(?:[\s]|$))', r' \1 ', text)
@@ -111,7 +111,7 @@ class TreebankWordTokenizer(TokenizerI):
 
         # Subsititute titles back.
         for t in self.TITLES + ['st']:
-          text = re.sub(r"(?i)((?:^| )"+t+r")_", r"\1.", text)
+          text = re.sub(r"(?i)((?:^| )"+t+r")=", r"\1.", text)
 
         # Separate single quotes if they're followed by a space.
         #text = re.sub(r"('\s)", r' \1', text)
