@@ -28,8 +28,7 @@ class CorpusSoul:
   def __init__(self, directory):
     self.normalizer = TokenNormalizer()
     # FIXME: http://www.w3schools.com/HTML/html_entities.asp
-    clean_ents = [("&lt;", "<"), ("&gt;", ">"), ("&amp;", "&"), ("’", "'"),
-                  ("…". "...")]
+    clean_ents = [("&lt;", "<"), ("&gt;", ">"), ("&amp;", "&")]
     tagged_tweets = []
     self.vocab = set([])
     for root, dirs, files in os.walk(directory):
@@ -71,6 +70,7 @@ class CorpusSoul:
           post = fl.read()
           tweets = self.post_to_tweets(post)
           for txt in tweets:
+            #txt = txt.encode('ascii', 'ignore')
             for e in clean_ents:
               txt = re.sub(e[0], e[1], txt)
             tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
