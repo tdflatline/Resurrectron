@@ -17,7 +17,6 @@ from tokenizer import word_tokenize, word_detokenize
 # 3. Attempt AGFL
 # 4. If no result, nltk.pos_tag
 
-# FIXME: Can we do anything clever with "!1!1!1" and "?//?/1!/"? Maybe a regex?
 class TokenNormalizer:
   # FIXME: these static maps should be class variables
   def __init__(self):
@@ -41,7 +40,7 @@ class TokenNormalizer:
                     "ms.":"miss", "fr.":"father", "rev.":"reverend",
                     "=":"is", "i":"I", "y":"why", "o":"oh", "rly":"really",
                     "tite":"tight", "holla":"holler", "tmrw":"tomorrow",
-                    "hai":"hi", "sez":"says", "haz":"has",
+                    "hai":"hi", "sez":"says", "haz":"has", "ne1":"anyone",
                     "ppl":"people", "ppls":"people", "pplz":"people",
                     "dat":"that", "deez":"these", "dees":"these",
                     "partay":"party", "anon":"anonymous" }
@@ -58,10 +57,14 @@ class TokenNormalizer:
 
     # Generate a mono_map for word+"in'" -> word+"ing"
     # Generate a mono_map for *word* and /word/
+    # Also handle stupid sentence-terminating punctuation.
     self.mono_regex = [("\*([\S]+)\*", r"\1"),
                        ("\/([\S]+)\/", r"\1"),
                        ("\'([\S]+)\'", r"\1"),
-                       (r"(\S+)in\'", r"\1ing")]
+                       (r"(\S+)in\'", r"\1ing"),
+                       (r"^(?:[\/1]*[\?\!]+[\/1]*){2,}$", "?"),
+                       (r"^(?:[1]*[\!]+[1]*){2,}$", "!")]
+
 
     # Store following (if matched) in map, then return tuple
     self.dual_map = { ("gon", "na") : ("going", "to"),
