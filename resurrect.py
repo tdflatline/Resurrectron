@@ -57,11 +57,13 @@ class POSTrim:
 class QueryStripper:
   kill_pos = set(["RP", "CC", "MD", "PDT", "POS", "TO", "WDT", "WP", "WP$",
                   "WRB", "DT", "EX", "."])
+  kill_words = set(["am", "are", "is", "was", "were"])
   @classmethod
   def strip_tagged_query(cls, tagged_query):
     ret = []
     for t in tagged_query:
-      if t[1] not in cls.kill_pos and not curses.ascii.ispunct(t[0][0]):
+      if t[0].lower() not in cls.kill_words \
+         and t[1] not in cls.kill_pos and not curses.ascii.ispunct(t[0][0]):
         ret.append(t)
     return ret
 
@@ -230,7 +232,10 @@ class SearchableText:
     self.total_words = len(search_tokens)
 
   def tokens(self):
-    return word_tokenize(self.hidden_text+self.text)
+    # FIXME: If we decide to drop tagged_tokens, switch to saving
+    # just the tokens
+    return [t[0] for t in self.tagged_tokens].extend(
+                       word_tokenize(self.hidden_text))
 
   def count(self, word):
     if word in self.word_count: return self.word_count[word]
@@ -289,7 +294,6 @@ class SearchableTextCollection:
     if not self.needs_update:
       print "No update needed"
       return
-    # XXX: Woah. This matrix takes up one hell of a lot of RAM.
     print "Computing score matrix."
     self.D = []
     for doc in self.texts:
@@ -299,12 +303,12 @@ class SearchableTextCollection:
         else: d.append(0.0)
       d = numpy.array(d)
       norm = math.sqrt(numpy.dot(d,d))
-      # XXX: This happens. Why?
       if norm <= 0:
         print "Zero row in matrix: "+doc.text
       else:
         d /= math.sqrt(numpy.dot(d,d))
-      self.D.append(d)
+      # FIXME: Needed to downcast. Too much memory...
+      self.D.append(d.astype(numpy.float32))
     print "Computed score matrix."
     self.needs_update = False
 
@@ -433,7 +437,6 @@ class TwitterBrain:
   def __init__(self, soul, pending_goal=1500, low_watermark=1415):
     # Need an ordered list of vocab words for SearchableTextCollection.
     # If it vocab changes, we fail.
-    # XXX: Can eliminate this
     for t in easter_eggs.xkcd: soul.vocab.update(t.word_count.iterkeys())
     self.pending_tweets = SearchableTextCollection(soul.vocab)
     for t in easter_eggs.xkcd: self.pending_tweets.add_text(t)
@@ -451,7 +454,8 @@ class TwitterBrain:
     self.low_watermark = low_watermark
     self.pending_goal = pending_goal
     self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
-
+    if self.pending_tweets.needs_update:
+      self.pending_tweets.update_matrix()
     self.work_lock = threading.Lock()
     self._shutdown = False
     self._thread = threading.Thread(target=self.__phrase_worker)
@@ -474,7 +478,7 @@ class TwitterBrain:
         max_len -= len("@"+msger+" ")
         qvect = self.conversation_contexts[msger].decay_query(
                      self.pending_tweets.score_query(query))
-        # FIXME: Hrmm. need to somehow create proper punctuation
+        # TODO: Hrmm. need to somehow create proper punctuation
         # based on both word content and position. Some kind
         # of classifier? Naive Bayes doesn't use position info though...
         (self.last_vect, ret) = self.pending_tweets.query_vector(qvect,
