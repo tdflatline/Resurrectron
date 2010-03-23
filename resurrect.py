@@ -191,34 +191,29 @@ class SearchableText:
 
     if not curses.ascii.ispunct(text[-1]): text += "."
 
-    # XXX: We should remove the tokens and possibly the tagged_tokens
-    # too. This eats a lot of storage and takes time to compress..
     self.tagged_tokens = tagged_tokens
-    if tokens: self.tokens = tokens
-    else: self.tokens = word_tokenize(text)
+    if not tokens: tokens = word_tokenize(text)
     self.text = text
 
     if hidden_text:
-      self.tokens.extend(word_tokenize(hidden_text))
+      tokens.extend(word_tokenize(hidden_text))
 
     # Include hidden text in search tokens
-    pos_tags = nltk.pos_tag(self.tokens)
+    pos_tags = nltk.pos_tag(tokens)
 
     if strip:
-      self.search_tokens = [porter.stem(t[0]).lower() for t in
+      search_tokens = [porter.stem(t[0]).lower() for t in
                             QueryStripper.strip_tagged_query(pos_tags)]
     else:
-      self.search_tokens = [porter.stem(t[0]).lower() for t in pos_tags]
-
-    self.vocab = set(self.search_tokens)
+      search_tokens = [porter.stem(t[0]).lower() for t in pos_tags]
 
     if generalize_terms:
       # Add senses, antonyms, and hypernyms to this list with
       # http://nodebox.net/code/index.php/Linguistics
       # Also add normalized versions with en.spelling() first
       new_terms = set()
-      for v in xrange(len(self.search_tokens)):
-         sv = self.search_tokens[v]
+      for v in xrange(len(search_tokens)):
+         sv = search_tokens[v]
          # en.spelling.correct(v)
          tag = POSTrim.trim(pos_tags[v][1])
          mod = None
@@ -232,14 +227,21 @@ class SearchableText:
            new_terms.update(en.list.flatten(mod.antonym(sv)))
            new_terms.update(en.list.flatten(mod.hypernym(sv)))
            new_terms.update(en.list.flatten(mod.hyponym(sv)))
-      self.vocab.update(new_terms)
-      # XXX: This kills doc frequency.
-      self.search_tokens = list(self.vocab)
+      search_tokens.extend(new_terms)
 
-  # XXX: Make this use a map. Then we can get rid of search_tokens
-  # and vocab
+    self.word_count = {}
+    for i in search_tokens:
+      if i not in self.word_count: self.word_count[i] = 0
+      self.word_count[i] += 1
+
+    self.total_words = len(search_tokens)
+
+  def tokens(self):
+    return word_tokenize(self.hidden_text+self.text)
+
   def count(self, word):
-    return self.search_tokens.count(word)
+    if word in self.word_count: return self.word_count[word]
+    else: return 0
 
 
 # Search:
@@ -299,7 +301,7 @@ class SearchableTextCollection:
     for doc in self.texts:
       d = []
       for dt in self.vocab:
-        if dt in doc.vocab: d.append(self.tf_idf(dt, doc))
+        if dt in doc.word_count: d.append(self.tf_idf(dt, doc))
         else: d.append(0.0)
       d = numpy.array(d)
       norm = math.sqrt(numpy.dot(d,d))
@@ -324,8 +326,7 @@ class SearchableTextCollection:
     # TODO: If no nouns, only pronouns, use state from queries+responses
     q = []
     for dt in self.vocab:
-      if dt in query_text.vocab:
-        q.append(self.tf_idf(dt, query_text))
+      if dt in query_text.word_count: q.append(self.tf_idf(dt, query_text))
       else: q.append(0.0)
 
     q = numpy.array(q)
@@ -406,7 +407,7 @@ class SearchableTextCollection:
 
   def tf(self, term, text):
     """ The frequency of the term in text. """
-    return float(text.count(term)) / len(text.search_tokens)
+    return float(text.count(term)) / text.total_words
 
   def idf(self, term):
     """ The number of texts in the corpus divided by the
@@ -414,8 +415,10 @@ class SearchableTextCollection:
     If a term does not appear in the corpus, 0.0 is returned. """
     # idf values are cached for performance.
     idf = self._idf_cache.get(term)
-    if idf is None: 
-      matches = len(list(True for text in self.texts if term in text.vocab))
+    if idf is None:
+      # FIXME: Decided to sum total counts, not just membership..
+      #matches = len(list(True for text in self.texts if term in text.word_count))
+      matches = sum(list(text.word_count[term] for text in self.texts if term in text.word_count))
       if not matches:
         idf = 0.0
       else:
@@ -434,7 +437,8 @@ class TwitterBrain:
   def __init__(self, soul, pending_goal=1500, low_watermark=1415):
     # Need an ordered list of vocab words for SearchableTextCollection.
     # If it vocab changes, we fail.
-    for t in easter_eggs.xkcd: soul.vocab.update(t.vocab)
+    # XXX: Can eliminate this
+    for t in easter_eggs.xkcd: soul.vocab.update(t.word_count.iterkeys())
     self.pending_tweets = SearchableTextCollection(soul.vocab)
     for t in easter_eggs.xkcd: self.pending_tweets.add_text(t)
     self.already_tweeted = []
@@ -494,12 +498,13 @@ class TwitterBrain:
         if not ret.hidden_text and ret not in self.remove_tweets:
           break
     self.remove_tweets.append(ret)
-    self.already_tweeted.append(set(ret.tokens))
+    tokens = ret.tokens()
+    self.already_tweeted.append(set(tokens))
     self.__unlock()
     if msger:
-      return ("@"+msger+" "+ret.text, ret.tokens, ret.tagged_tokens)
+      return ("@"+msger+" "+ret.text, tokens, ret.tagged_tokens)
     else:
-      return (ret.text, ret.tokens, ret.tagged_tokens)
+      return (ret.text, tokens, ret.tagged_tokens)
 
   def __did_already_tweet(self, words, max_score=0.75):
     for t in self.already_tweeted:
@@ -513,8 +518,9 @@ class TwitterBrain:
 
     # TODO: This maybe should be a function of the SearchableTextCollection
     for text in self.pending_tweets.texts:
-      score = float(len(set(text.tokens) & words))
-      score1 = score/len(text.tokens)
+      tokens = set(text.tokens())
+      score = float(len(tokens & words))
+      score1 = score/len(tokens)
       score2 = score/len(words)
       if score1 > max_score or score2 > max_score:
         #print "Too similar to old tweet.. skipping: "+\

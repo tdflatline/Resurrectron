@@ -25,6 +25,7 @@ class TokenNormalizer:
     self.skip_tokens = set(['"','(',')','[',']'])
 
     # One-to-one mapping, no context
+    # XXX: "anon.", "Mr.", "Ms.", "Mrs.", "St."
     self.mono_map = { "u":"you", "r":"are", "m":"am", "c":"see",
                     "n":"and", "n'":"and", "yah":"yes",
                     "h8":"hate", "<3":"love", "thx":"thanks", "tnx":"thanks",
