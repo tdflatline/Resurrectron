@@ -27,23 +27,26 @@ class TokenNormalizer:
     self.mono_map = { "u":"you", "r":"are", "m":"am", "c":"see",
                     "n":"and", "n'":"and", "yah":"yes",
                     "h8":"hate", "<3":"love", "thx":"thanks", "tnx":"thanks",
-                    "teh":"the", "fb":"Facebook", "2nite":"tonight",
+                    "thnks":"thanks", "teh":"the", "fb":"Facebook",
+                    "2nite":"tonight", "2night":"tonight",
                     "ur" :"your", "dbag":"douche", "nye":"newyears",
                     "w/o":"without", "w/":"with", "b/c":"because",
-                    "+":"and", "&":"and", "'em":"them",
+                    "+":"and", "&":"and", "'em":"them", "em":"them",
                     "til":"until", "'till":"until", "phat":"fat",
                     "totes":"totally", "stunnah":"stunner", "txt":"text",
                     "4get":"forget", "4git":"forget", "4gt":"forget",
                     "4got":"forgot", "gangsta":"gangster", "thru":"through",
-                    "ya":"you", "gen":"general", "dem":"them", "msg":"message",#fishy
                     "st":"street", "st.":"street", "mr.":"mister", "mrs.":"missus",
                     "ms.":"miss", "fr.":"father", "rev.":"reverend",
                     "=":"is", "i":"I", "y":"why", "o":"oh", "rly":"really",
                     "tite":"tight", "holla":"holler", "tmrw":"tomorrow",
                     "hai":"hi", "sez":"says", "haz":"has", "ne1":"anyone",
-                    "ppl":"people", "ppls":"people", "pplz":"people",
-                    "dat":"that", "deez":"these", "dees":"these",
-                    "partay":"party", "anon":"anonymous" }
+                    "ppl":"people", "ppls":"people", "pplz":"people", "wut":"what",
+                    "dat":"that", "deez":"these", "dees":"these", "ne":"any",
+                    "partay":"party", "anon":"anonymous", "hawt":"hot",
+                    "ya":"you", "gen":"general", "dem":"them", "msg":"message",#fishy
+                    "dunno":"misunderstand" # Hack for now..
+                    }
 
     # Make sure capital words are always capitalized for POS tag
     f = open("/usr/share/dict/words", "r")

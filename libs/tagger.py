@@ -46,6 +46,7 @@ class AGFLTweaker:
   }
 
   # Temporarily strip out stuff we left in (esp for AGFL)
+  # XXX: This is doubling up in some cases..
   def agfl_fix(self, tokens, nltk_tags):
     fixed = False
     for t in xrange(len(nltk_tags)):
@@ -72,6 +73,7 @@ class AGFLTweaker:
 
   # TODO: ["[a-z]/[a-z]"] => " or "
   # XXX: AGFL hates "!"
+  # It also hates "!." and other multiple punctiations..
   def prune(self, tags):
     for i in xrange(len(tags)):
       if tags[i] == "'s" or tags[i] == "'S": continue
@@ -240,6 +242,10 @@ def main():
   print toks
   print pos_tag(word_tokenize("I expect it to go: omg, diaf and stuff."))
   print pos_tag(word_tokenize("Foo dogs by way of stillonlyjacks."))
+
+  # XXX:
+  print pos_tag(word_tokenize("If I wore a new band's shirt to the band's concert, does that make me lame?"))
+  print pos_tag(word_tokenize("New doctor was impressed w/ my ability 2 wear shorts in winter+not have a cold. I was unimpressed w/ her inability 2 sell drugs"))
 
 if __name__ == "__main__":
    main()

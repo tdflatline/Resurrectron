@@ -112,9 +112,9 @@ class TreebankWordTokenizer(TokenizerI):
 
         # Split periods into groups.
         #text = re.sub(r'([\.\?\!]+(?:[\s]|$))', r' \1 ', text)
-        text = re.sub(r'(^|[\w\s\-\'\/,\<\>\*\@\#]+)((?:[1]*[\.\?\!\/]+[1]*)+)(?:[\s]|$)', r'\1 \2 ', text)
-        text = re.sub(r'(^|[\w\s\-\'\/,\<\>\*\@\#]+)((?:[1]*[\.\?\!\/]+[1]*){2,})', r'\1 \2 ', text)
-        #text = re.sub(r'([\.\?\!1]{3,})', r' \1 ', text)
+        #text = re.sub(r'([\.\?\!1]{2,})', r' \1 ', text)
+        text = re.sub(r'(^|[\w\s\-\'\/,\<\>\*\@\#]+)((?:[\/1]*[\.\?\!]+[\/1]*)+)(?:[\s]|$)', r'\1 \2 ', text)
+        text = re.sub(r'(^|[\w\s\-\'\/,\<\>\*\@\#]+)((?:[\/1]*[\.\?\!]+[\/1]*){2,})', r'\1 \2 ', text)
 
         # Subsititute titles back.
         for t in self.TITLES + ['st']:
@@ -194,7 +194,7 @@ def main():
   print tok.detokenize(["25%", "predict", "a lot", "of", "G-Unit", "45%", "fashion"])
   print tok.tokenize("...I&u are+teh best: @ 7:30 pm 1:30. a=hi.")
   print tok.detokenize(tok.tokenize("I&u are+teh best: @ 7:30 pm 1:30. a=hi."))
-  print tok.tokenize("Mr. Johnson's ate a Dr.'s hotdog's w/ me b/c 2311 Main St. USA :p <3?!/?!11")
+  print tok.tokenize("Mr. Johnson's ate a Dr.'s hotdog w/ me b/c 2311 Main St. USA :p <3?!/?!11")
   print tok.detokenize(tok.tokenize("The Mr. Johnson ate a Dr.'s hotdog on Main St. USA"))
 
 
