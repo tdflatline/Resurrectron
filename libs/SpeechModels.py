@@ -45,7 +45,9 @@ class TokenNormalizer:
                     "dat":"that", "deez":"these", "dees":"these", "ne":"any",
                     "partay":"party", "anon":"anonymous", "hawt":"hot",
                     "ya":"you", "gen":"general", "dem":"them", "msg":"message",#fishy
-                    "dunno":"misunderstand" # Hack for now..
+                    # AGFL handles "." much better than "!"...
+                    # also hack Dunno for now as just a 1 word mapping..
+                    "!":".", "dunno":"misunderstand"
                     }
 
     # Make sure capital words are always capitalized for POS tag
@@ -66,7 +68,8 @@ class TokenNormalizer:
                        ("\'([\S]+)\'", r"\1"),
                        (r"(\S+)in\'", r"\1ing"),
                        (r"^(?:[\/1]*[\?\!]+[\/1]*){2,}$", "?"),
-                       (r"^(?:[1]*[\!]+[1]*){2,}$", "!")]
+                       # AGFL handles "." much better than "!"...
+                       (r"^(?:[1]*[\!]+[1]*){2,}$", ".")]
 
 
     # Store following (if matched) in map, then return tuple

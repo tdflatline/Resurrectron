@@ -46,22 +46,24 @@ class AGFLTweaker:
   }
 
   # Temporarily strip out stuff we left in (esp for AGFL)
-  # XXX: This is doubling up in some cases..
   def agfl_fix(self, tokens, nltk_tags):
-    fixed = False
-    for t in xrange(len(nltk_tags)):
-      tokens[t] = re.sub(r"\.\.[\.]+", "...", tokens[t])
-      if nltk_tags[t][0] == "'s":
-        # FIXME: Add to normalizer/undo?
-        if nltk_tags[t][1] == "VBZ":
-          tokens[t] = "is"
-        elif nltk_tags[t][1] == "POS": # Evil Hack. XXX: Undo?
-          tokens[t-1] += "s"
-          nltk_tags[t-1] = (nltk_tags[t-1][0]+"s", nltk_tags[t-1][1])
-          fixed = True
-    if fixed:
-      nltk_tags.remove(("'s", "POS"))
-      tokens.remove("'s")
+    fixed = True
+    while fixed:
+      fixed = False
+      for t in xrange(len(nltk_tags)):
+        tokens[t] = re.sub(r"\.\.[\.]+", "...", tokens[t])
+        if nltk_tags[t][0] == "'s":
+          # FIXME: Add to normalizer/undo?
+          if nltk_tags[t][1] == "VBZ":
+            tokens[t] = "is"
+          elif nltk_tags[t][1] == "POS": # Evil Hack. XXX: Undo?
+            tokens[t-1] += "s"
+            nltk_tags[t-1] = (nltk_tags[t-1][0]+"s", nltk_tags[t-1][1])
+            fixed = True
+            break
+      if fixed:
+        nltk_tags.remove(("'s", "POS"))
+        tokens.remove("'s")
 
   # FIXME: Can we do anything clever with "!1!1!1" and "?//?/1!/"?
   # AGFL also hates ".."
@@ -243,9 +245,7 @@ def main():
   print pos_tag(word_tokenize("I expect it to go: omg, diaf and stuff."))
   print pos_tag(word_tokenize("Foo dogs by way of stillonlyjacks."))
 
-  # XXX:
   print pos_tag(word_tokenize("If I wore a new band's shirt to the band's concert, does that make me lame?"))
-  print pos_tag(word_tokenize("New doctor was impressed w/ my ability 2 wear shorts in winter+not have a cold. I was unimpressed w/ her inability 2 sell drugs"))
 
 if __name__ == "__main__":
    main()
