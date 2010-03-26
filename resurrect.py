@@ -234,8 +234,13 @@ class SearchableText:
   def tokens(self):
     # FIXME: If we decide to drop tagged_tokens, switch to saving
     # just the tokens
-    return [t[0] for t in self.tagged_tokens].extend(
-                       word_tokenize(self.hidden_text))
+    if self.tagged_tokens:
+      retlist = [t[0] for t in self.tagged_tokens]
+    else:
+      retlist = word_tokenize(self.text)
+    if self.hidden_text:
+      retlist.extend(word_tokenize(self.hidden_text))
+    return retlist
 
   def count(self, word):
     if word in self.word_count: return self.word_count[word]
@@ -434,7 +439,7 @@ class SearchableTextCollection:
 #
 # It also manages a separate worker thread for generating more pending tweets.
 class TwitterBrain:
-  def __init__(self, soul, pending_goal=1500, low_watermark=1415):
+  def __init__(self, soul, pending_goal=5000, low_watermark=4915):
     # Need an ordered list of vocab words for SearchableTextCollection.
     # If it vocab changes, we fail.
     for t in easter_eggs.xkcd: soul.vocab.update(t.word_count.iterkeys())
@@ -450,7 +455,7 @@ class TwitterBrain:
     self.last_vect = None
     self.restart(soul, pending_goal, low_watermark) # Must come last!
 
-  def restart(self, soul, pending_goal=1500, low_watermark=1415):
+  def restart(self, soul, pending_goal=5000, low_watermark=4915):
     self.low_watermark = low_watermark
     self.pending_goal = pending_goal
     self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
