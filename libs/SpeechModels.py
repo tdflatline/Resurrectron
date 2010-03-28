@@ -449,7 +449,7 @@ class TokenNormalizer:
 #  2. HMM-4gram (x-x-i-x or x-i-x-x)
 #  3. HMM-5gram (x-x-i-x-x, x-i-x-x-x, x-x-i-x-x, x-x-x-i-x)
 class PhraseGenerator:
-  def __init__(self, tagged_phrases, normalizer=None, states=5, offset=1):
+  def __init__(self, tagged_phrases, normalizer=None, states=4, offset=1):
     self.normalizer = normalizer
     # 41 is the winner so far..
     self.states = states
