@@ -56,7 +56,10 @@ class AGFLTweaker:
           # FIXME: Add to normalizer/undo?
           if nltk_tags[t][1] == "VBZ":
             tokens[t] = "is"
-          elif nltk_tags[t][1] == "POS": # Evil Hack. XXX: Undo?
+          elif nltk_tags[t][1] == "POS": # Evil Hack.
+            # Attempt to undo the possesive hack:
+            self.sub_map[tokens[t-1]+"s"] = tokens[t-1]+"'s"
+
             tokens[t-1] += "s"
             nltk_tags[t-1] = (nltk_tags[t-1][0]+"s", nltk_tags[t-1][1])
             fixed = True

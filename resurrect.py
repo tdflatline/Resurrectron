@@ -478,7 +478,7 @@ class TwitterBrain:
       if msger:
         # TODO: Only prime memory if excessive pronouns in query?
         if self.last_vect != None:
-          self.conversation_contexts[msger].prime_memory(self.last_vect*0.75)
+          self.conversation_contexts[msger].prime_memory(self.last_vect*0.5)
         query = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query)))
         max_len -= len("@"+msger+" ")
         qvect = self.conversation_contexts[msger].decay_query(
@@ -489,7 +489,7 @@ class TwitterBrain:
         (self.last_vect, ret) = self.pending_tweets.query_vector(qvect,
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
-        self.conversation_contexts[msger].remember_query(self.last_vect*0.75)
+        self.conversation_contexts[msger].remember_query(self.last_vect*0.5)
       else:
         query = word_detokenize(self.raw_normalizer.normalize_tokens(word_tokenize(query)))
         (self.last_vect, ret) = self.pending_tweets.query_string(query,
@@ -643,7 +643,13 @@ class StdinLoop(cmd.Cmd):
   def onecmd(self, query):
     if not query:
       (str_result, tokens, tagged_tokens) = self.brain.get_tweet()
-    elif query == "q!" or query == "EOF":
+    elif query == ":w":
+      BrainReader.write(self, "target_user.brain", True)
+    elif query == ":wq":
+      BrainReader.write(self, "target_user.brain", True)
+      print "Exiting Command loop."
+      sys.exit(0)
+    elif query == ":q!" or query == "EOF":
       print "Exiting Command loop."
       sys.exit(0)
     else:

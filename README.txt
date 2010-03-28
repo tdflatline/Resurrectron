@@ -17,7 +17,7 @@ Quick steps:
 5. Throw them in the directory ./target_user/
 6. Run ./resurrect.py to generate a .soul file and a .brain file.
 7. Torment the AI to your hearts content.
-8. Hit Control-D or q!<enter> to exit.
+8. Hit Control-D, Control-C, or :q!<enter> to exit.
 
 Note that the .soul and .brain generation process takes quite some time.
 The brain generation process does run in the background while you chat
