@@ -36,15 +36,21 @@ class TokenNormalizer:
                     "totes":"totally", "stunnah":"stunner", "txt":"text",
                     "4get":"forget", "4git":"forget", "4gt":"forget",
                     "4got":"forgot", "gangsta":"gangster", "thru":"through",
-                    "st":"street", "st.":"street", "mr.":"mister", "mrs.":"missus",
-                    "ms.":"miss", "fr.":"father", "rev.":"reverend",
+                    "st":"street", "st.":"street", "mr.":"mister",
+                    "mrs.":"missus", "ms.":"miss", "fr.":"father",
+                    "rev.":"reverend", "sgt.":"sergent",
                     "=":"is", "i":"I", "y":"why", "o":"oh", "rly":"really",
                     "tite":"tight", "holla":"holler", "tmrw":"tomorrow",
                     "hai":"hi", "sez":"says", "haz":"has", "ne1":"anyone",
                     "ppl":"people", "ppls":"people", "pplz":"people", "wut":"what",
                     "dat":"that", "deez":"these", "dees":"these", "ne":"any",
                     "partay":"party", "anon":"anonymous", "hawt":"hot",
-                    "ya":"you", "gen":"general", "dem":"them", "msg":"message",#fishy
+                    "omg":"wow", "zomg":"wow",
+
+                    # These are fishy and potentially ambigous:
+                    "ya":"you", "gen":"general", "dem":"them",
+                    "msg":"message", #"2":"to",
+
                     # AGFL handles "." much better than "!"...
                     # also hack Dunno for now as just a 1 word mapping..
                     "!":".", "dunno":"misunderstand"
@@ -127,16 +133,17 @@ class TokenNormalizer:
     self.sentences_capitalized = 0;
     self.sentences_lowercase = 0;
 
-
+  # We are actually storing case in all the denorm maps.
+  # But we need to preserve case for "i".
   def _normalize(self, word, next_word):
     word_orig = word
     word = word.lower()
 
     if next_word:
-      isupper = word_orig.isupper() and next_word.isupper()
       next_word_orig = next_word
       next_word = next_word.lower()
       tup = (word, next_word)
+      tupd = (word_orig, next_word_orig)
 
       if tup in self.dual_map:
         norm_tup = self.dual_map[tup]
@@ -145,18 +152,13 @@ class TokenNormalizer:
         if norm_tup not in self.dual_counts: self.dual_counts[norm_tup] = 0
         self.dual_counts[norm_tup] += 1
 
-        # Preserve case for I
-        if isupper or norm_tup[0] == "i": tupd = (word_orig, next_word_orig)
-        else: tupd = tup
         if norm_tup not in self.dual_denorm:
           self.dual_denorm[norm_tup] = {}
         if tupd not in self.dual_denorm[norm_tup]:
           self.dual_denorm[norm_tup][tupd] = 1
         else: self.dual_denorm[norm_tup][tupd] += 1
 
-        if isupper:
-          return (self.dual_map[tup][0].upper(), self.dual_map[tup][1].upper())
-        else: return self.dual_map[tup]
+        return self.dual_map[tup]
 
       if word in self.dual_post:
         ret = self.dual_post[word]
@@ -165,17 +167,13 @@ class TokenNormalizer:
         if norm_tup not in self.dual_counts: self.dual_counts[norm_tup] = 0
         self.dual_counts[norm_tup] += 1
 
-        # Preserve case for I
-        if isupper or norm_tup[0] == "i": tupd = (word_orig, next_word_orig)
-        else: tupd = tup
         if norm_tup not in self.dual_denorm:
           self.dual_denorm[norm_tup] = {}
         if tupd not in self.dual_denorm[norm_tup]:
           self.dual_denorm[norm_tup][tupd] = 1
         else: self.dual_denorm[norm_tup][tupd] += 1
 
-        if isupper: return (ret.upper(), next_word_orig)
-        else: return (ret, next_word_orig)
+        return (ret, next_word)
 
       if next_word in self.dual_pre:
         ret = self.dual_pre[next_word]
@@ -185,45 +183,58 @@ class TokenNormalizer:
         self.dual_counts[norm_tup] += 1
 
         # Preserve case for I
-        if isupper or norm_tup[0] == "i": tupd = (word_orig, next_word_orig)
-        else: tupd = tup
+        if norm_tup[0] == "i": word_orig = "I"
+
         if norm_tup not in self.dual_denorm:
           self.dual_denorm[norm_tup] = {}
         if tupd not in self.dual_denorm[norm_tup]:
           self.dual_denorm[norm_tup][tupd] = 1
         else: self.dual_denorm[norm_tup][tupd] += 1
 
-        if isupper: return (word_orig, ret.upper())
-        else: return (word_orig, ret)
+        return (word_orig, ret)
 
     if word in self.mono_map:
-      isupper = word.isupper()
       norm_word = self.mono_map[word].lower()
       if norm_word not in self.mono_counts: self.mono_counts[norm_word] = 0
       self.mono_counts[norm_word] += 1
 
-      if word not in self.mono_denorm:
+      if norm_word not in self.mono_denorm:
         self.mono_denorm[norm_word] = {}
       if word_orig not in self.mono_denorm[norm_word]:
         self.mono_denorm[norm_word][word_orig] = 1
-      else: self.mono_denorm[word][word_orig] += 1
+      else: self.mono_denorm[norm_word][word_orig] += 1
 
-      if isupper: return (self.mono_map[word].upper(),)
-      else: return (self.mono_map[word],)
+      return (self.mono_map[word],)
 
     # FIXME: Make this recursive to catch nested versions?
     for r in self.mono_regex:
-      norm_word = re.sub(r[0], r[1], word)
+      norm_word = re.sub(r[0], r[1], word).lower()
       if norm_word != word:
         if norm_word not in self.mono_counts: self.mono_counts[norm_word] = 0
         self.mono_counts[norm_word] += 1
 
-        if word not in self.mono_denorm:
+        if norm_word not in self.mono_denorm:
           self.mono_denorm[norm_word] = {}
         if word_orig not in self.mono_denorm[norm_word]:
           self.mono_denorm[norm_word][word_orig] = 1
-        else: self.mono_denorm[word][word_orig] += 1
+        else: self.mono_denorm[norm_word][word_orig] += 1
+
         return (norm_word,)
+
+    # Statistically normalize capital words..
+    # This may not make the output much better, but it should help AGFL.
+    if word_orig.isupper():
+      norm_word = word
+      if norm_word not in self.mono_counts: self.mono_counts[norm_word] = 0
+      self.mono_counts[norm_word] += 1
+
+      if norm_word not in self.mono_denorm:
+        self.mono_denorm[norm_word] = {}
+      if word_orig not in self.mono_denorm[norm_word]:
+        self.mono_denorm[norm_word][word_orig] = 1
+      else: self.mono_denorm[norm_word][word_orig] += 1
+
+      return (norm_word,)
 
     return (word_orig,)
 
@@ -373,7 +384,10 @@ class TokenNormalizer:
 
     did_cap_word = False
     for i in xrange(len(ret_tokens)):
-      if ret_tokens[i] != "I" and ret_tokens[i].isupper(): continue
+      if ret_tokens[i].isupper():
+        did_cap_word = True
+        continue
+
       ltoken = ret_tokens[i].lower()
 
       if ltoken in self.capital_words and ltoken not in self.lowercase_words:
@@ -435,11 +449,12 @@ class TokenNormalizer:
 #  2. HMM-4gram (x-x-i-x or x-i-x-x)
 #  3. HMM-5gram (x-x-i-x-x, x-i-x-x-x, x-x-i-x-x, x-x-x-i-x)
 class PhraseGenerator:
-  def __init__(self, tagged_phrases, normalizer=None):
+  def __init__(self, tagged_phrases, normalizer=None, states=5, offset=1):
     self.normalizer = normalizer
     # 41 is the winner so far..
-    self.nm_hmm = {}
-    self.nm_hmm["41"] = self._build_nm_hmm(tagged_phrases, 4, 1)
+    self.states = states
+    self.offset = offset
+    self.nm_hmm = self._build_nm_hmm(tagged_phrases, self.states, self.offset)
 
   def _build_nm_hmm(self, tagged_phrases, l, o):
     print "Prepping NM-HMM"
@@ -488,12 +503,12 @@ class PhraseGenerator:
     print "Trained NM-HMM"
     return nm_hmm
 
-  def _nm_hmm_phrase(self, mode="41"):
+  def _nm_hmm_phrase(self):
     # TODO: Maybe build mode on-demand?
     while True:
       try:
-        return self.nm_hmm[mode].random_sample(random, 500,
-                "|"*(self.nm_hmm[mode].length-self.nm_hmm[mode].offset))
+        return self.nm_hmm.random_sample(random, 500,
+                "|"*(self.nm_hmm.length-self.nm_hmm.offset))
       except:
         print "Probability failure..."
         traceback.print_exc()
@@ -520,15 +535,6 @@ class PhraseGenerator:
       tokens = toks
       something=word_detokenize(toks)
     return (something, toks, tagged_tokens)
-
-  def test_run(self):
-    for mode in map(str, [30, 31, 32, 40, 41, 42, 43]):
-      print "Writing "+mode
-      f = open(mode+".twt", "w")
-      for i in xrange(1,50):
-        print "  Writing "+str(i)
-        result = self._nm_hmm_phrase(mode)
-        f.write(word_detokenize(result)+"\n\n")
 
 def main():
   TokenNormalizer.UnitTest()
