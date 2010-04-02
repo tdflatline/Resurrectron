@@ -18,6 +18,10 @@ Shorter term:
        for each person that it follows/receives an @msg from.
      - Probably no HMM, just kick back the fact-based statements with
        inverted pronouns.
+ - AGFL tweaks
+   - Add modern lexicon like 'blog', 'tweet', 'gmail', 'email' to the grammar
+   - Deal with AGFL's [1] and [2] POS tree references..
+   - Retry questions as statements if they fail..
  - Other random XXX's, FIXME's and TODO's in the source.
 
 Longer term:
