@@ -22,7 +22,8 @@ Longer term:
        antonyms as input to cluster alg.
  - Do map-reduce for faster training on multi-core or even multi-node systems
    - The expensive functions are pos_tag() in extract.py and the
-     __phrase_worker2() loop in extract.py.
+     __phrase_worker2() loop in resurrect.py (the combination of
+     self.voice.say_something and self.__did_already_tweet)
    - This would yield a two stage map-reduce: one stage to tag
      the corpus and the next to generate a tweet pool.
  - Alter HMM output based on query?
