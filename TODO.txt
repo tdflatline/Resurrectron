@@ -1,16 +1,23 @@
 Ideas for future work.
 
 Shorter term:
+ - Amplify nouns in query vectors to make responses more topical
  - Give the AI a body (twitter)
-   - Attempt to learn things about people the bot follows/who @msg it
+   - Post at random time intervals
+     - Learn sleep cycles of input corpus if jtwt is available.
+   - Respond to @msgs/direct messages
+     - Only respond if some minimal TF-IDF score is met.
+   - Use some really high TF-IDF threshold to @msg followers when they say
+     something "interesting"
+     - Will also need to rate limit this behavior in case multiple
+       people train AIs on the same corpus. That could lead to
+       conflagration...
+   - Attempt to learn things about people the AI follows/who @msg it
      - Invert personal pronouns
      - Maintain a separate SearchableTextCollection to use TF-IDF on
        for each person that it follows/receives an @msg from.
      - Probably no HMM, just kick back the fact-based statements with
        inverted pronouns.
-   - Use some really high TF-IDF threshold to @msg followers when they say
-     something "interesting"
- - Amplify nouns in query vectors to make responses more topical
  - Other random XXX's, FIXME's and TODO's in the source.
 
 Longer term:
