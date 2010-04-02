@@ -317,7 +317,7 @@ class SearchableTextCollection:
         print "Zero row in matrix: "+doc.text
       else:
         d /= math.sqrt(numpy.dot(d,d))
-      # FIXME: Needed to downcast. Too much memory...
+      # Needed to downcast. Too much memory...
       self.D.append(d.astype(numpy.float32))
     print "Computed score matrix."
     self.needs_update = False
@@ -426,7 +426,7 @@ class SearchableTextCollection:
     # idf values are cached for performance.
     idf = self._idf_cache.get(term)
     if idf is None:
-      # FIXME: Decided to sum total counts, not just membership..
+      # Decided to sum total counts, not just membership..
       #matches = len(list(True for text in self.texts if term in text.word_count))
       matches = sum(list(text.word_count[term] for text in self.texts if term in text.word_count))
       if not matches:
@@ -480,7 +480,8 @@ class TwitterBrain:
     self._thread = threading.Thread(target=self.__phrase_worker)
     self._thread.start()
 
-  # FIXME: We should normalize for tense agreement.
+  # TODO: We could normalize for tense agreement... might be a bad idea
+  # though.
   # http://nodebox.net/code/index.php/Linguistics
   # en.is_verb() with en.verb.tense() and en.verb.conjugate()
   def get_tweet(self, msger=None, query=None):

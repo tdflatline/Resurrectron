@@ -68,8 +68,6 @@ class AGFLTweaker:
         nltk_tags.remove(("'s", "POS"))
         tokens.remove("'s")
 
-  # FIXME: Can we do anything clever with "!1!1!1" and "?//?/1!/"?
-  # AGFL also hates ".."
   # FIXME: This needs context...
   bad_affix = ["^[\#\@]"]
   replace = ["^[\/\*\']", "[\/\*\']$"] # => ""
@@ -77,8 +75,6 @@ class AGFLTweaker:
     self.sub_map = {}
 
   # TODO: ["[a-z]/[a-z]"] => " or "
-  # XXX: AGFL hates "!"
-  # It also hates "!." and other multiple punctiations..
   def prune(self, tags):
     for i in xrange(len(tags)):
       if tags[i] == "'s" or tags[i] == "'S": continue
@@ -188,7 +184,7 @@ class AGFLTweaker:
     return agfl_tags
 
 agfl = AGFL.AGFLWrapper()
-# XXX: Maybe rewrite tweaker.prune() to be
+# TODO: Maybe rewrite tweaker.prune() to be
 # position aware. Then we can stop doing quite
 # so many calls to word_detokenize()
 # XXX: Also move all this into a single tagger class.

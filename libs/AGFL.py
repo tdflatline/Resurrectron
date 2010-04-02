@@ -76,7 +76,7 @@ class EP4irParseTree:
         tags.append((tag, ""))
         continue
 
-      # XXX: Sometimes AGFL cites a parent leaf with [1] or [2]..
+      # FIXME: Sometimes AGFL cites a parent leaf with [1] or [2]..
       # Usually it does this when its broken, but sometimes it actually
       # has correctly inferred a NOUN/VERB POS position.
 
@@ -108,7 +108,6 @@ class EP4irParseTree:
     pass
 
 class AGFLWrapper:
-  # XXX: Better errro handling for pipe failure
   def __init__(self):
     # agfl-run -T 1 -B -b ep4ir
     self.p = Popen("agfl-run -v totals -H -T 2 -B -b ./libs/agfl_ep4/ep4ir", shell=True,

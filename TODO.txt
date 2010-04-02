@@ -1,0 +1,40 @@
+Ideas for future work.
+
+Shorter term:
+ - Give the AI a body (twitter)
+   - Attempt to learn things about people the bot follows/who @msg it
+     - Invert personal pronouns
+     - Maintain a separate SearchableTextCollection to use TF-IDF on
+       for each person that it follows/receives an @msg from.
+     - Probably no HMM, just kick back the fact-based statements with
+       inverted pronouns.
+   - Use some really high TF-IDF threshold to @msg followers when they say
+     something "interesting"
+ - Amplify nouns in query vectors to make responses more topical
+ - Other random XXX's, FIXME's and TODO's in the source.
+
+Longer term:
+ - randomly lament about missing Foursquare top12 locations
+ - train multiple HMM's on topically classified/tagged text.
+   - This will prevent topic bleedover and keep tweets more sensible.
+   - Can possibly even cluster corpus tweets using an unsupervised algorithm
+     - But be sure to use wordnet's synsets, hyponyms, hypernyms, and
+       antonyms as input to cluster alg.
+ - Do map-reduce for faster training on multi-core or even multi-node systems
+   - The expensive functions are pos_tag() in extract.py and the
+     __phrase_worker2() loop in extract.py.
+   - This would yield a two stage map-reduce: one stage to tag
+     the corpus and the next to generate a tweet pool.
+ - Alter HMM output based on query?
+   - Instead of maintaining a tweet pool for TF-IDF, we could try to directly
+     influence the HMM states based on query vocab.
+     - Doing this without destroying the grammar and/or just producing
+       gibberish with the query words in it seems hard though. But maybe
+       some HMM wizards out there know a way.
+ - PGFG?
+   - Maybe we should try to learn a PCFG instead of an HMM as our grammar
+     model.
+     - The problem with this is we may need more structure for the grammar
+       than simple POS tags. AGFL might give this to us, but that means
+       falling back to nltk.pos_tag is definitely out.
+

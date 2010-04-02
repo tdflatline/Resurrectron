@@ -80,7 +80,8 @@ from nltk.util import LazyMap, LazyConcatenation, LazyZip
 
 from nltk.tag.api import *
 
-# XXX: Hack to dodge the unpicklable lambda functions
+# Hack to dodge the unpicklable lambda functions.
+# XXX: Still not enough.
 def self_transform(symbols):
   return symbols
 
