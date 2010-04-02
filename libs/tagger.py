@@ -191,8 +191,10 @@ agfl = AGFL.AGFLWrapper()
 # XXX: Maybe rewrite tweaker.prune() to be
 # position aware. Then we can stop doing quite
 # so many calls to word_detokenize()
-def pos_tag(tokens):
-  if agfl.agfl_ok():
+# XXX: Also move all this into a single tagger class.
+def pos_tag(tokens, try_agfl=True, reject_agfl_fails=True,
+            nltk_fallback=True):
+  if try_agfl and agfl.agfl_ok():
     detoked = word_detokenize(tokens)
     sentences = nltk.sent_tokenize(detoked)
     all_tags = []
@@ -210,13 +212,16 @@ def pos_tag(tokens):
       agfl_tree = agfl.parse_sentence(s)
       # XXX: We can re-try failed '?' with '.'..
       if not agfl_tree:
-        print "Parse fail for |"+s+"|"
-        return None # Hrmm. use partials? Prob not
+        print "AGFL Parse fail for |"+s+"|"
+        if not reject_agfl_fails:
+          all_tags.extend(tweaker.deprune(nltk.pos_tag(stokens)))
+        else:
+          return None
       else:
         tags = agfl_tree.pos_tag()
         tags = tweaker.agfl_split(tags)
         did_join = tweaker.agfl_join(tags, stokens)
-        tweaker.agfl_repair(tags, nltk_tags)
+        if nltk_fallback: tweaker.agfl_repair(tags, nltk_tags)
         tweaker.deprune(tags)
         # Verify that we have labels for everything.
         # If some are still missing, drop.
@@ -234,7 +239,7 @@ def pos_tag(tokens):
     return all_tags
   else:
     # XXX: Kill this log
-    print "AGFL not found/functional. Fallig back to nltk.pos_tag()"
+    print "AGFL not found/functional. Falling back to nltk.pos_tag()"
     return nltk.pos_tag(tokens)
 
 

@@ -24,6 +24,10 @@ from libs.tokenizer import word_tokenize, word_detokenize
 from libs.tagger import pos_tag
 from libs.summarize import SimpleSummarizer
 
+from ConfigParser import SafeConfigParser
+config = SafeConfigParser()
+config.read('settings.cfg')
+
 class CorpusSoul:
   def __init__(self, directory):
     self.normalizer = TokenNormalizer()
@@ -46,7 +50,10 @@ class CorpusSoul:
               txt = re.sub(e[0], e[1], txt)
             tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
             self.vocab.update(tokens)
-            tagged_tweet = pos_tag(tokens)
+            tagged_tweet = pos_tag(tokens,
+                             config.getboolean("soul","attempt_agfl"),
+                             config.getboolean("soul","reject_agfl_failures"),
+                             config.getboolean("soul","agfl_nltk_fallback"))
             if tagged_tweet: tagged_tweets.append(tagged_tweet)
             print "Loaded tweet #"+str(len(tagged_tweets)) #+"/"+str(len(files))
         # .twt: plain-text tweets, 1 per line
@@ -60,7 +67,10 @@ class CorpusSoul:
               txt = re.sub(e[0], e[1], txt)
             tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
             self.vocab.update(tokens)
-            tagged_tweet = pos_tag(tokens)
+            tagged_tweet = pos_tag(tokens,
+                             config.getboolean("soul","attempt_agfl"),
+                             config.getboolean("soul","reject_agfl_failures"),
+                             config.getboolean("soul","agfl_nltk_fallback"))
             if tagged_tweet: tagged_tweets.append(tagged_tweet)
             print "Loaded tweet #"+str(len(tagged_tweets)) #+"/"+str(len(files))
           pass
@@ -76,7 +86,10 @@ class CorpusSoul:
             tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
             if tokens:
               self.vocab.update(tokens)
-              tagged_tweet = pos_tag(tokens)
+              tagged_tweet = pos_tag(tokens,
+                              config.getboolean("soul","attempt_agfl"),
+                              config.getboolean("soul","reject_agfl_failures"),
+                              config.getboolean("soul","agfl_nltk_fallback"))
               if tagged_tweet: tagged_tweets.append(tagged_tweet)
               print "Loaded post-tweet #"+str(len(tagged_tweets))
         # .irclog: irc log files. irssi format.
@@ -93,13 +106,13 @@ class CorpusSoul:
     post = re.sub(r"\([^\)]+\)", "", post)
     if summarize:
       summ = SimpleSummarizer()
-      post = summ.summarize(post, 6)
+      post = summ.summarize(post, config.getint("soul", "post_summarize_len"))
     sentences = nltk.sent_tokenize(post)
     tweets = []
     tweet = ""
     for s in sentences:
-      if len(s) > 140: continue
-      if len(tweet + s) < 140:
+      if len(s) > config.getint("soul","post_len"): continue
+      if len(tweet + s) < config.getint("soul","post_len"):
         tweet += s+" "
       else:
         if tweet: tweets.append(tweet)
@@ -108,16 +121,30 @@ class CorpusSoul:
 
 def main():
   try:
+    print "Loading soul file..."
+    soul = pickle.load(open("target_user.soul", "r"))
+    print "Loaded soul file."
+  except pickle.UnpicklingError:
     soul = pickle.load(gzip.GzipFile("target_user.soul", "r"))
-  except Exception,e:
-    traceback.print_exc()
+    print "Loaded soul file."
+  except KeyError:
+    soul = pickle.load(gzip.GzipFile("target_user.soul", "r"))
+    print "Loaded soul file."
+  except IOError:
     print "No soul file found. Regenerating."
     soul = CorpusSoul('target_user')
-    pickle.dump(soul, gzip.GzipFile("target_user.soul", "w"))
+    if config.getboolean("soul", "gzip_soul"):
+      pickle.dump(soul, gzip.GzipFile("target_user.soul", "w"))
+    else:
+      pickle.dump(soul, open("target_user.soul", "w"))
+  except Exception,e:
+    traceback.print_exc()
 
   soul.normalizer.verify_scores()
 
-  voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
+  voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer,
+                          config.getint("brain","hmm_context"),
+                          config.getint("brain","hmm_offset"))
 
   while True:
     query = raw_input("> ")

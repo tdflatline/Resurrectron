@@ -29,6 +29,10 @@ from libs.tokenizer import word_tokenize, word_detokenize
 from libs.SpeechModels import PhraseGenerator, TokenNormalizer
 from extract import CorpusSoul
 
+from ConfigParser import SafeConfigParser
+config = SafeConfigParser()
+config.read('settings.cfg')
+
 import easter_eggs
 
 class POSTrim:
@@ -110,7 +114,8 @@ porter = nltk.PorterStemmer()
 #  - Expire after a while. Exponential backoff?
 #    - Possibly keep appending these keywords to queries
 class ConversationContext:
-  def __init__(self, nick, decay=0.25):
+  def __init__(self, nick,
+               decay=(1.0-config.getfloat("brain","memory_decay_rate"))):
     self.nick = nick
     self.normalizer = TokenNormalizer()
     self.decay = decay
@@ -340,7 +345,8 @@ class SearchableTextCollection:
     print "Qvector built"
     return q
 
-  def query_string(self, query_string, exclude=[], max_len=140,
+  def query_string(self, query_string, exclude=[],
+                   max_len=config.getint("brain","tweet_len"),
                    randomize_top=1):
     if not query_string:
       print "Empty query!"
@@ -348,7 +354,8 @@ class SearchableTextCollection:
     return self.query_vector(self.score_query(query_string), exclude, max_len,
                       randomize_top)
 
-  def query_vector(self, query_vector, exclude=[], max_len=140,
+  def query_vector(self, query_vector, exclude=[],
+                   max_len=config.getint("brain","tweet_len"),
                    randomize_top=1):
     q = query_vector
 
@@ -372,7 +379,7 @@ class SearchableTextCollection:
     sorted_scores = []
     for i in xrange(len(scores)):
       sorted_scores.append((scores[i], i))
-    sorted_scores.sort(lambda x,y: int(y[0]*10000 - x[0]*10000))
+    sorted_scores.sort(lambda x,y: int(y[0]*100000000 - x[0]*100000000))
 
     i = 0
     keep = 0
@@ -439,7 +446,7 @@ class SearchableTextCollection:
 #
 # It also manages a separate worker thread for generating more pending tweets.
 class TwitterBrain:
-  def __init__(self, soul, pending_goal=5000, low_watermark=4915):
+  def __init__(self, soul):
     # Need an ordered list of vocab words for SearchableTextCollection.
     # If it vocab changes, we fail.
     for t in easter_eggs.xkcd: soul.vocab.update(t.word_count.iterkeys())
@@ -453,12 +460,19 @@ class TwitterBrain:
     self.conversation_contexts = {}
     self.raw_normalizer = TokenNormalizer()
     self.last_vect = None
-    self.restart(soul, pending_goal, low_watermark) # Must come last!
+    self.restart(soul) # Must come last!
 
-  def restart(self, soul, pending_goal=5000, low_watermark=4915):
-    self.low_watermark = low_watermark
-    self.pending_goal = pending_goal
-    self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer)
+  def restart(self, soul):
+    if config.getfloat("brain","tweet_pool_multiplier") > 0:
+      self.pending_goal = min(len(soul.tagged_tweets) * \
+           config.getfloat("brain","tweet_pool_multiplier"),
+                   config.getint("brain", "tweet_pool_max"))
+    else:
+      self.pending_goal = config.getint("brain", "tweet_pool_max")
+    self.low_watermark = self.pending_goal - 85 # FIXME: config?
+    self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer,
+                          config.getint("brain", "hmm_context"),
+                          config.getint("brain", "hmm_offset"))
     if self.pending_tweets.needs_update:
       self.pending_tweets.update_matrix()
     self.work_lock = threading.Lock()
@@ -473,12 +487,12 @@ class TwitterBrain:
     self.__lock()
     if msger and msger not in self.conversation_contexts:
       self.conversation_contexts[msger] = ConversationContext(msger)
-    max_len = 140
+    max_len = config.getint("brain","tweet_len")
     if query:
       if msger:
         # TODO: Only prime memory if excessive pronouns in query?
         if self.last_vect != None:
-          self.conversation_contexts[msger].prime_memory(self.last_vect*0.5)
+          self.conversation_contexts[msger].prime_memory(self.last_vect)
         query = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query)))
         max_len -= len("@"+msger+" ")
         qvect = self.conversation_contexts[msger].decay_query(
@@ -489,9 +503,10 @@ class TwitterBrain:
         (self.last_vect, ret) = self.pending_tweets.query_vector(qvect,
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
-        self.conversation_contexts[msger].remember_query(self.last_vect*0.5)
+        self.conversation_contexts[msger].remember_query(self.last_vect)
       else:
         query = word_detokenize(self.raw_normalizer.normalize_tokens(word_tokenize(query)))
+        # FIXME: Should it maybe remember more than the most recent query?
         (self.last_vect, ret) = self.pending_tweets.query_string(query,
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
@@ -511,7 +526,8 @@ class TwitterBrain:
     else:
       return (ret.text, tokens, ret.tagged_tokens)
 
-  def __did_already_tweet(self, words, max_score=0.75):
+  def __did_already_tweet(self, words,
+                          max_score=config.getfloat("brain","max_shared_word_ratio")):
     for t in self.already_tweeted:
       score = float(len(t & words))
       score1 = score/len(t)
@@ -560,7 +576,7 @@ class TwitterBrain:
     first_run = True
     while not self._shutdown:
       added_tweets = False
-      if len(self.remove_tweets) > 90:
+      if len(self.remove_tweets) > 90: # FIXME: config?
         self.__lock()
         while len(self.remove_tweets) > 0:
           self.pending_tweets.remove_text(self.remove_tweets.pop())
@@ -573,7 +589,8 @@ class TwitterBrain:
           self.__lock()
           (tweet,tokens,tagged_tokens) = self.voice.say_something()
 
-          if len(tweet) > 140 or self.__did_already_tweet(set(tokens)):
+          if len(tweet) > config.getint("brain", "tweet_len") \
+                or self.__did_already_tweet(set(tokens)):
             self.__unlock()
             continue
 
@@ -585,7 +602,7 @@ class TwitterBrain:
           added_tweets = True
           self.__unlock()
 
-          if len(self.pending_tweets.texts) % 100 == 0:
+          if len(self.pending_tweets.texts) % 100 == 0: # FIXME: config?
             break # Perform other work
 
       time.sleep(2)
@@ -596,28 +613,30 @@ class TwitterBrain:
         self.pending_tweets.update_matrix()
         self.__unlock()
         first_run=False
-        BrainReader.write(self, "target_user.brain", True)
+        BrainReader.write(self, "target_user.brain")
       elif added_tweets:
         self.__lock()
         print "At tweet count "+str(len(self.pending_tweets.texts))+\
                   "/"+str(self.pending_goal)
         self.pending_tweets.update_matrix()
         self.__unlock()
-        if len(self.pending_tweets.texts) % 100 == 0:
-          BrainReader.write(self, "target_user.brain", True)
+        if (len(self.pending_tweets.texts) % \
+               config.getint("brain","save_brain_every")) == 0:
+          BrainReader.write(self, "target_user.brain")
       time.sleep(2)
 
 # Lousy hmm can't be pickled
 class BrainReader:
   @classmethod
-  def write(cls, brain, fname, bzip2=False):
+  def write(cls, brain, fname,
+            do_gzip=config.getboolean("brain", "gzip_brain")):
     brain.work_lock.acquire()
     (voice,thread,lock) = (brain.voice,brain._thread,brain.work_lock)
     (brain.voice,brain._thread,brain.work_lock) = (None,None,None)
     (D,needs_update) = (brain.pending_tweets.D,brain.pending_tweets.needs_update)
     (brain.pending_tweets.D, brain.pending_tweets.needs_update) = (None,True)
     print "Writing brain file..."
-    if bzip2: pickle.dump(brain, gzip.GzipFile(fname+".part", "w"))
+    if do_gzip: pickle.dump(brain, gzip.GzipFile(fname+".part", "w"))
     else: pickle.dump(brain, open(fname+".part", "w"))
     print "Brain file written..."
     (brain.voice,brain._thread,brain.work_lock) = (voice,thread,lock)
@@ -646,9 +665,9 @@ class StdinLoop(cmd.Cmd):
     if not query:
       (str_result, tokens, tagged_tokens) = self.brain.get_tweet()
     elif query == ":w":
-      BrainReader.write(self, "target_user.brain", True)
+      BrainReader.write(self, "target_user.brain")
     elif query == ":wq":
-      BrainReader.write(self, "target_user.brain", True)
+      BrainReader.write(self, "target_user.brain")
       print "Exiting Command loop."
       sys.exit(0)
     elif query == ":q!" or query == "EOF":
@@ -665,12 +684,21 @@ def main():
 
   try:
     print "Loading soul file..."
+    soul = pickle.load(open("target_user.soul", "r"))
+    print "Loaded soul file."
+  except pickle.UnpicklingError:
+    soul = pickle.load(gzip.GzipFile("target_user.soul", "r"))
+    print "Loaded soul file."
+  except KeyError:
     soul = pickle.load(gzip.GzipFile("target_user.soul", "r"))
     print "Loaded soul file."
   except IOError:
     print "No soul file found. Regenerating."
     soul = CorpusSoul('target_user')
-    pickle.dump(soul, gzip.GzipFile("target_user.soul", "w"))
+    if config.getboolean("soul","gzip_soul"):
+      pickle.dump(soul, gzip.GzipFile("target_user.soul", "w"))
+    else:
+      pickle.dump(soul, open("target_user.soul", "w"))
   except Exception,e:
     traceback.print_exc()
 
