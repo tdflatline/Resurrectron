@@ -238,8 +238,8 @@ def pos_tag(tokens, try_agfl=True, reject_agfl_fails=True,
           return None
     return all_tags
   else:
-    # XXX: Kill this log
-    print "AGFL not found/functional. Falling back to nltk.pos_tag()"
+    if try_agfl:
+      print "AGFL not found/functional. Falling back to nltk.pos_tag()"
     return nltk.pos_tag(tokens)
 
 
