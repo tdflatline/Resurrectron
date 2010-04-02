@@ -528,7 +528,7 @@ class TwitterBrain:
       score1 = score/len(tokens)
       score2 = score/len(words)
       if score1 > max_score or score2 > max_score:
-        #print "Too similar to old tweet.. skipping: "+\
+        #print "Too similar to pending tweet.. skipping: "+\
         #         str(score1)+"/"+str(score2)
         return True
     return False
@@ -580,6 +580,8 @@ class TwitterBrain:
           self.pending_tweets.add_text(
                       SearchableText(tweet,tokens,tagged_tokens),
                       update=(not first_run))
+          print "At tweet count "+str(len(self.pending_tweets.texts))+\
+                  "/"+str(self.pending_goal)
           added_tweets = True
           self.__unlock()
 
@@ -601,7 +603,7 @@ class TwitterBrain:
                   "/"+str(self.pending_goal)
         self.pending_tweets.update_matrix()
         self.__unlock()
-        if len(self.pending_tweets.texts) % 500 == 0:
+        if len(self.pending_tweets.texts) % 100 == 0:
           BrainReader.write(self, "target_user.brain", True)
       time.sleep(2)
 
@@ -683,6 +685,9 @@ def main():
     BrainReader.write(brain, "target_user.brain")
   except Exception,e:
     traceback.print_exc()
+
+  #for i in brain.pending_tweets.texts: print i.text
+  #sys.exit(0)
 
   c = StdinLoop(brain)
   try:

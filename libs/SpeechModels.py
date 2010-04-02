@@ -45,7 +45,7 @@ class TokenNormalizer:
                     "ppl":"people", "ppls":"people", "pplz":"people", "wut":"what",
                     "dat":"that", "deez":"these", "dees":"these", "ne":"any",
                     "partay":"party", "anon":"anonymous", "hawt":"hot",
-                    "omg":"wow", "zomg":"wow",
+                    "omg":"wow", "zomg":"wow", "scurred":"scared",
 
                     # These are fishy and potentially ambigous:
                     "ya":"you", "gen":"general", "dem":"them",

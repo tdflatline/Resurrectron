@@ -249,6 +249,7 @@ def main():
   print pos_tag(word_tokenize("Foo dogs by way of stillonlyjacks."))
 
   print pos_tag(word_tokenize("If I wore a new band's shirt to the band's concert, does that make me lame?"))
+  print pos_tag(word_tokenize("|Stinging jets, part words, part pictures, kept shooting at his brain.... .... .."))
 
 if __name__ == "__main__":
    main()
