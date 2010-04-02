@@ -15,9 +15,10 @@ Quick steps:
    from a twitter feed, or posts from a blog. You can also create .twt files
    by hand, which can contain 1 quote/quip per line.
 5. Throw them in the directory ./target_user/
-6. Run ./resurrect.py to generate a .soul file and a .brain file.
-7. Torment the AI to your hearts content.
-8. Hit Control-D, Control-C, or :q!<enter> to exit.
+6. Optional: Tweak settings in ./settings.cfg for your use case.
+7. Run ./resurrect.py to generate a .soul file and a .brain file.
+8. Torment the AI to your hearts content.
+9. Hit Control-D, Control-C, or :q!<enter> to exit.
 
 Note that the .soul and .brain generation process takes quite some time.
 The brain generation process does run in the background while you chat
