@@ -139,6 +139,9 @@ class ConversationContext:
       self.memory_vector += q_vector
     else:
       self.memory_vector = q_vector
+    # Normalize these after summing to prevent score inflation.
+    norm = math.sqrt(numpy.dot(self.memory_vector,self.memory_vector))
+    self.memory_vector /= norm
     self.last_query_time = now
     return self.memory_vector
 
