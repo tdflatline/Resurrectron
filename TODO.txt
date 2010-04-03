@@ -5,13 +5,17 @@ Shorter term:
  - Give the AI a body (twitter)
    - Post at random time intervals
      - Learn sleep cycles of input corpus if jtwt is available.
+       - Do this via post/hour frequency models
+       - Allow user to specify a model
    - Respond to @msgs/direct messages
      - Only respond if some minimal TF-IDF score is met.
+     - Need pronoun logic for how to dampen last thing bot said.
    - Use some really high TF-IDF threshold to @msg followers when they say
      something "interesting"
      - Will also need to rate limit this behavior in case multiple
        people train AIs on the same corpus. That could lead to
        conflagration...
+   - Follow people when they follow it
    - Attempt to learn things about people the AI follows/who @msg it
      - Invert personal pronouns
      - Maintain a separate SearchableTextCollection to use TF-IDF on
@@ -31,6 +35,7 @@ Longer term:
    - Can possibly even cluster corpus tweets using an unsupervised algorithm
      - But be sure to use wordnet's synsets, hyponyms, hypernyms, and
        antonyms as input to cluster alg.
+     - Use tf-idf score vectors as the vectors to cluster
  - Do map-reduce for faster training on multi-core or even multi-node systems
    - The expensive functions are pos_tag() in extract.py and the
      __phrase_worker2() loop in resurrect.py (the combination of

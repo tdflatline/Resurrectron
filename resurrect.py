@@ -179,6 +179,12 @@ class FourSquareData:
 class URLClassifier:
   pass
 
+class TextWordInfo:
+  def __init__(self, pos_tag=None, count=0, idx=0):
+    self.vector_idx = idx # index in the global vocab/score vector
+    self.count = count # occurrence in parent text body
+    self.pos_tag = pos_tag # POSTrimmed nltk tag
+
 class SearchableText:
   def __init__(self, text, tokens=None, tagged_tokens=None, strip=False, hidden_text="", generalize_terms=True):
     if hidden_text:
@@ -334,7 +340,12 @@ class SearchableTextCollection:
     # TODO: If no nouns, only pronouns, use state from queries+responses
     q = []
     for dt in self.vocab:
-      if dt in query_text.word_count: q.append(self.tf_idf(dt, query_text))
+      if dt in query_text.word_count:
+        # XXX: Need to produce a tagged score for this. Some
+        # kind of aux structure that links tagged word to score-index.
+        # The other problem is that the SearchableText has wordnet data in it
+        # too.
+        q.append(self.tf_idf(dt, query_text))
       else: q.append(0.0)
 
     q = numpy.array(q)
@@ -492,15 +503,17 @@ class TwitterBrain:
     if query:
       if msger:
         # TODO: Only prime memory if excessive pronouns in query?
+        # Or, change the weights between the query and the last vector..
+        # If no pronouns, dampen last_vect by 0.5? if only pronouns,
+        # don't dampen?
+        # Actually, need to check match first. If the nouns match the
+        # last_vect, don't dampen either.
         if self.last_vect != None:
           self.conversation_contexts[msger].prime_memory(self.last_vect)
         query = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query)))
         max_len -= len("@"+msger+" ")
         qvect = self.conversation_contexts[msger].decay_query(
                      self.pending_tweets.score_query(query))
-        # TODO: Hrmm. need to somehow create proper punctuation
-        # based on both word content and position. Some kind
-        # of classifier? Naive Bayes doesn't use position info though...
         (self.last_vect, ret) = self.pending_tweets.query_vector(qvect,
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
