@@ -270,7 +270,8 @@ class SearchableTextCollection:
     self._idf_cache = {}
     self.texts = texts
     if generalize_terms:
-      vocab = set(vocab)
+      # Need to stem vocab. SearchableTexts are all stemmed.
+      vocab = set([porter.stem(t).lower() for t in vocab])
       new_terms = set()
       print "Generalizing vocabulary"
       for v in vocab:
