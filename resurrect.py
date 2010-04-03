@@ -219,20 +219,20 @@ class SearchableText:
       # Also add normalized versions with en.spelling() first
       new_terms = set()
       for v in xrange(len(search_tokens)):
-         sv = search_tokens[v]
-         # en.spelling.correct(v)
-         tag = POSTrim.trim(pos_tags[v][1])
-         mod = None
-         if tag == "NN": mod = en.noun
-         elif tag == "JJ": mod = en.adjective
-         elif tag == "VB": mod = en.verb
-         elif tag == "RB": mod = en.adverb
-         else: mod = en.wordnet
-         if mod:
-           new_terms.update(en.list.flatten(mod.senses(sv)))
-           new_terms.update(en.list.flatten(mod.antonym(sv)))
-           new_terms.update(en.list.flatten(mod.hypernym(sv)))
-           new_terms.update(en.list.flatten(mod.hyponym(sv)))
+        sv = search_tokens[v]
+        # en.spelling.correct(v)
+        tag = POSTrim.trim(pos_tags[v][1])
+        mod = None
+        if tag == "NN": mod = en.noun
+        elif tag == "JJ": mod = en.adjective
+        elif tag == "VB": mod = en.verb
+        elif tag == "RB": mod = en.adverb
+        else: mod = en.wordnet
+        if mod:
+          new_terms.update(en.list.flatten(mod.senses(sv)))
+          new_terms.update(en.list.flatten(mod.antonym(sv)))
+          new_terms.update(en.list.flatten(mod.hypernym(sv)))
+          new_terms.update(en.list.flatten(mod.hyponym(sv)))
       search_tokens.extend(new_terms)
 
     self.word_count = {}
@@ -275,16 +275,16 @@ class SearchableTextCollection:
       new_terms = set()
       print "Generalizing vocabulary"
       for v in vocab:
-         # Actually, no need to spell check here. It's probably
-         # spelled right eventually, and this is SLOW!
-         sv = v #en.spelling.correct(v)
-         new_terms.update(sv)
-         # Use parts of speech. en.wordnet is not a superset..
-         for mod in [en.wordnet, en.adjective, en.noun, en.verb, en.adverb]:
-           new_terms.update(en.list.flatten(mod.senses(sv)))
-           new_terms.update(en.list.flatten(mod.antonym(sv)))
-           new_terms.update(en.list.flatten(mod.hypernym(sv)))
-           new_terms.update(en.list.flatten(mod.hyponym(sv)))
+        # Actually, no need to spell check here. It's probably
+        # spelled right eventually, and this is SLOW!
+        sv = v #en.spelling.correct(v)
+        new_terms.update(sv)
+        # Use parts of speech. en.wordnet is not a superset..
+        for mod in [en.wordnet, en.adjective, en.noun, en.verb, en.adverb]:
+          new_terms.update(en.list.flatten(mod.senses(sv)))
+          new_terms.update(en.list.flatten(mod.antonym(sv)))
+          new_terms.update(en.list.flatten(mod.hypernym(sv)))
+          new_terms.update(en.list.flatten(mod.hyponym(sv)))
       vocab.update(new_terms)
       print "Generalized vocabulary"
     self.vocab = list(vocab)
