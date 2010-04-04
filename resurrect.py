@@ -33,7 +33,6 @@ from ConfigParser import SafeConfigParser,NoOptionError
 config = SafeConfigParser()
 config.read('settings.cfg')
 
-import easter_eggs
 
 class POSTrim:
    pos_map = { "VBD":"VB", "VBG":"VB", "VBN":"VB", "VBP":"VB", "VBZ":"VB",
@@ -563,6 +562,7 @@ class TwitterBrain:
   def __init__(self, soul):
     # Need an ordered list of vocab words for SearchableTextCollection.
     # If it vocab changes, we fail.
+    import easter_eggs
     for t in easter_eggs.xkcd: soul.vocab.update(t.word_info.iterkeys())
     self.pending_tweets = SearchableTextCollection(soul.vocab)
     for t in easter_eggs.xkcd: self.pending_tweets.add_text(t)
