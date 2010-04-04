@@ -183,13 +183,15 @@ class URLClassifier:
   pass
 
 class TextWordInfo:
-  def __init__(self, pos_tag=None, count=0, idx=0):
-    self.vector_idx = idx # index in the global vocab/score vector
-    self.count = count # occurrence in parent text body
-    self.pos_tag = pos_tag # POSTrimmed nltk tag
+  def __init__(self):
+    self.vector_idx = -1 # index in the global vocab/score vector
+    self.count = 0 # occurrence in parent text body
+    self.pos_counts = {} # POSTrimmed nltk tag
 
 class SearchableText:
-  def __init__(self, text, tokens=None, tagged_tokens=None, strip=False, hidden_text="", generalize_terms=True):
+  def __init__(self, text, tokens=None, tagged_tokens=None, strip=False,
+               hidden_text="",
+               generalize_terms=config.getboolean('brain', 'generalize_terms')):
     if hidden_text:
       hidden_text = hidden_text.rstrip()
       if not curses.ascii.ispunct(hidden_text[-1]):
@@ -216,19 +218,20 @@ class SearchableText:
     else:
       search_tokens = [porter.stem(t[0]).lower() for t in pos_tags]
 
+    self.word_info = {}
+    self.total_words = 0
     if generalize_terms:
       # Add senses, antonyms, and hypernyms to this list with
       # http://nodebox.net/code/index.php/Linguistics
       # Also add normalized versions with en.spelling() first
-      new_terms = set()
-      # FIXME: Hrmm.. maybe don't use a set here..
+
       # FIXME: This is biasing results. Words with lots of hyponyms are being
       # favored by TF-IDF. We need word sense disambiguation to prune this
       # down.
       # http://groups.google.com/group/nltk-users/browse_thread/thread/ad191241e5d9ee78
-
       for v in xrange(len(search_tokens)):
         sv = search_tokens[v]
+        add_terms = set([sv])
         # en.spelling.correct(v)
         tag = POSTrim.trim(pos_tags[v][1])
         mod = None
@@ -238,18 +241,28 @@ class SearchableText:
         elif tag == "RB": mod = en.adverb
         else: mod = en.wordnet
         if mod:
-          new_terms.update(en.list.flatten(mod.senses(sv)))
-          new_terms.update(en.list.flatten(mod.antonym(sv)))
-          new_terms.update(en.list.flatten(mod.hypernym(sv)))
-          new_terms.update(en.list.flatten(mod.hyponym(sv)))
-      search_tokens.extend(new_terms)
+          #add_terms.update(en.list.flatten(mod.senses(sv)))
+          add_terms.update(en.list.flatten(mod.antonym(sv)))
+          add_terms.update(en.list.flatten(mod.hypernym(sv)))
+          add_terms.update(en.list.flatten(mod.hyponym(sv)))
 
-    self.word_count = {}
-    for i in search_tokens:
-      if i not in self.word_count: self.word_count[i] = 0
-      self.word_count[i] += 1
-
-    self.total_words = len(search_tokens)
+        for t in add_terms:
+          if t not in self.word_info:
+            self.word_info[t] = TextWordInfo()
+          if tag not in self.word_info[t].pos_counts:
+            self.word_info[t].pos_counts[tag] = 0
+          self.word_info[t].count += 1
+          self.word_info[t].pos_counts[tag] += 1
+          self.total_words += 1
+    else:
+      for t in search_tokens:
+        if t not in self.word_info:
+          self.word_info[t] = TextWordInfo()
+        if tag not in self.word_info[t].pos_counts:
+          self.word_info[t].pos_counts[tag] = 0
+        self.word_info[t].count += 1
+        self.word_info[t].pos_counts[tag] += 1
+        self.total_words += 1
 
   def tokens(self):
     # FIXME: If we decide to drop tagged_tokens, switch to saving
@@ -263,7 +276,7 @@ class SearchableText:
     return retlist
 
   def count(self, word):
-    if word in self.word_count: return self.word_count[word]
+    if word in self.word_info: return self.word_info[word].count
     else: return 0
 
 
@@ -275,7 +288,8 @@ class SearchableText:
 #  5. Return probabilistically based on score with some cutoff
 
 class SearchableTextCollection:
-  def __init__(self, vocab, texts=[], generalize_terms=True):
+  def __init__(self, vocab, texts=[],
+               generalize_terms=config.getboolean('brain', 'generalize_terms')):
     self._idf_cache = {}
     self.texts = texts
     if generalize_terms:
@@ -290,7 +304,7 @@ class SearchableTextCollection:
         new_terms.update(sv)
         # Use parts of speech. en.wordnet is not a superset..
         for mod in [en.wordnet, en.adjective, en.noun, en.verb, en.adverb]:
-          new_terms.update(en.list.flatten(mod.senses(sv)))
+          #new_terms.update(en.list.flatten(mod.senses(sv)))
           new_terms.update(en.list.flatten(mod.antonym(sv)))
           new_terms.update(en.list.flatten(mod.hypernym(sv)))
           new_terms.update(en.list.flatten(mod.hyponym(sv)))
@@ -325,7 +339,7 @@ class SearchableTextCollection:
     for doc in self.texts:
       d = []
       for dt in self.vocab:
-        if dt in doc.word_count: d.append(self.tf_idf(dt, doc))
+        if dt in doc.word_info: d.append(self.tf_idf(dt, doc))
         else: d.append(0.0)
       d = numpy.array(d)
       norm = math.sqrt(numpy.dot(d,d))
@@ -345,12 +359,13 @@ class SearchableTextCollection:
     query_text = SearchableText(query_string, strip=True)
 
     print "Building Qvector.."
-    # TODO: Hrmm, could amplify nouns and dampen adjectives and verbs:
-    # Normalize to 0.75*(max_noun/max_word)
-    # TODO: If no nouns, only pronouns, use state from queries+responses
+    # XXX: Amplify nouns and dampen adjectives and verbs:
+    # 1. divide current score by count
+    # 2. amplify by linear combo of ratios in config
+    # 3. re-normalize
     q = []
     for dt in self.vocab:
-      if dt in query_text.word_count:
+      if dt in query_text.word_info:
         # XXX: Need to produce a tagged score for this. Some
         # kind of aux structure that links tagged word to score-index.
         # The other problem is that the SearchableText has wordnet data in it
@@ -459,8 +474,9 @@ class SearchableTextCollection:
     idf = self._idf_cache.get(term)
     if idf is None:
       # Decided to sum total counts, not just membership..
-      #matches = len(list(True for text in self.texts if term in text.word_count))
-      matches = sum(list(text.word_count[term] for text in self.texts if term in text.word_count))
+      #matches = len(list(True for text in self.texts if term in text.word_info))
+      matches = sum(list(text.word_info[term].count for text in self.texts if
+term in text.word_info))
       if not matches:
         idf = 0.0
       else:
@@ -481,7 +497,7 @@ class TwitterBrain:
   def __init__(self, soul):
     # Need an ordered list of vocab words for SearchableTextCollection.
     # If it vocab changes, we fail.
-    for t in easter_eggs.xkcd: soul.vocab.update(t.word_count.iterkeys())
+    for t in easter_eggs.xkcd: soul.vocab.update(t.word_info.iterkeys())
     self.pending_tweets = SearchableTextCollection(soul.vocab)
     for t in easter_eggs.xkcd: self.pending_tweets.add_text(t)
     self.already_tweeted = []
@@ -533,6 +549,8 @@ class TwitterBrain:
       max_len -= len("@"+msger+" ")
       # FIXME: Hrmm, should we add followed tweets to the memory even if
       # we decide to ignore them?
+      # XXX: nltk.pos_tag doesn't do so well if the first word in a question
+      # is capitalized
       qvect = self.conversation_contexts[msger].decay_query(
                    self.pending_tweets.score_query(query))
       (score, last_vect, ret) = self.pending_tweets.query_vector(qvect,
