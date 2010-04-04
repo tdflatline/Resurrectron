@@ -31,9 +31,9 @@ Shorter term:
    http://streamhacker.com/2008/11/03/part-of-speech-tagging-with-nltk-part-1/
    http://streamhacker.com/2008/11/10/part-of-speech-tagging-with-nltk-part-2/
    http://streamhacker.com/2008/12/03/part-of-speech-tagging-with-nltk-part-3/
-   - What portions of brown was this against?
-   - What position for 3gram? Why not 4Gram tagger?
-   - Why did you not use nltk.pos_tag as a backoff?
+   - We may also want to strip off the subject off of training data.
+     Tweets seem to omit "I", "You", "do you", etc, and this confuses
+     nltk.pos_tag as is...
 
 Longer term:
  - randomly lament about missing Foursquare top12 locations
