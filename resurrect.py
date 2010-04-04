@@ -381,6 +381,8 @@ class SearchableTextCollection:
                    randomize_top=1):
     q = query_vector
 
+    # FIXME: Could actually turn this into a proper numpy matrix multiply
+    # for speed.
     print "Muliplying Matrix"
     scores = []
     tot_score = 0.0
@@ -398,6 +400,8 @@ class SearchableTextCollection:
               "WTF buh uh huh dunno what talking about understand",
               exclude, max_len, randomize_top)
 
+    # FIXME: Could also eliminate this sort if we decide we never
+    # want to randomize.
     sorted_scores = []
     for i in xrange(len(scores)):
       sorted_scores.append((scores[i], i))
