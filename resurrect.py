@@ -29,7 +29,7 @@ from libs.tokenizer import word_tokenize, word_detokenize
 from libs.SpeechModels import PhraseGenerator, TokenNormalizer
 from extract import CorpusSoul
 
-from ConfigParser import SafeConfigParser
+from ConfigParser import SafeConfigParser,NoOptionError
 config = SafeConfigParser()
 config.read('settings.cfg')
 
@@ -184,6 +184,7 @@ class URLClassifier:
 
 class TextWordInfo:
   def __init__(self):
+    # XXX: Are we going to use vector_idx?
     self.vector_idx = -1 # index in the global vocab/score vector
     self.count = 0 # occurrence in parent text body
     self.pos_counts = {} # POSTrimmed nltk tag
@@ -359,19 +360,27 @@ class SearchableTextCollection:
     query_text = SearchableText(query_string, strip=True)
 
     print "Building Qvector.."
-    # XXX: Amplify nouns and dampen adjectives and verbs:
-    # 1. divide current score by count
-    # 2. amplify by linear combo of ratios in config
-    # 3. re-normalize
     q = []
     for dt in self.vocab:
       if dt in query_text.word_info:
-        # XXX: Need to produce a tagged score for this. Some
-        # kind of aux structure that links tagged word to score-index.
-        # The other problem is that the SearchableText has wordnet data in it
-        # too.
-        q.append(self.tf_idf(dt, query_text))
-      else: q.append(0.0)
+        # Amplify nouns and dampen adjectives and verbs:
+        #  1. Divide current score by count
+        #  2. Amplify by linear combo of ratios in config
+        #  3. Normalize
+        score = self.tf_idf(dt, query_text)
+        score /= query_text.word_info[dt].count
+        new_score = 0.0
+        # FIXME: Can maybe optmize this by moving it out of the loop...
+        # So far doesn't seem too expensive though.
+        for tag in query_text.word_info[dt].pos_counts.iterkeys():
+          try:
+            weight = config.getfloat('brain', tag+"_weight")
+          except NoOptionError:
+            weight = 1.0
+          new_score += weight*query_text.word_info[dt].pos_counts[tag]
+        q.append(new_score)
+      else:
+        q.append(0.0)
 
     q = numpy.array(q)
     # Numpy is retarded here.. Need to special case 0
