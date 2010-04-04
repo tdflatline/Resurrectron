@@ -36,6 +36,9 @@ Longer term:
      - But be sure to use wordnet's synsets, hyponyms, hypernyms, and
        antonyms as input to cluster alg.
      - Use tf-idf score vectors as the vectors to cluster
+     - Load a .topics file from the target_user directory that summarizes
+       each topic the AI will talk about, written how the target user
+       would say it.
  - Do map-reduce for faster training on multi-core or even multi-node systems
    - The expensive functions are pos_tag() in extract.py and the
      __phrase_worker2() loop in resurrect.py (the combination of
