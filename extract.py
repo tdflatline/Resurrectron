@@ -31,6 +31,7 @@ config.read('settings.cfg')
 class CorpusSoul:
   def __init__(self, directory):
     self.normalizer = TokenNormalizer()
+    self.quote_engine_only = config.getboolean('soul', 'quote_engine_only')
     # FIXME: http://www.w3schools.com/HTML/html_entities.asp
     clean_ents = [("&lt;", "<"), ("&gt;", ">"), ("&amp;", "&")]
     tagged_tweets = []
@@ -48,13 +49,16 @@ class CorpusSoul:
             if txt[0] == '@': txt = re.sub('^@[\S]+ ', '', txt)
             for e in clean_ents:
               txt = re.sub(e[0], e[1], txt)
-            tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
-            self.vocab.update(tokens)
-            tagged_tweet = pos_tag(tokens,
-                             config.getboolean("soul","attempt_agfl"),
-                             config.getboolean("soul","reject_agfl_failures"),
-                             config.getboolean("soul","agfl_nltk_fallback"))
-            if tagged_tweet: tagged_tweets.append(tagged_tweet)
+            if self.quote_engine_only:
+              tagged_tweets.append(txt)
+            else:
+              tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
+              self.vocab.update(tokens)
+              tagged_tweet = pos_tag(tokens,
+                               config.getboolean("soul","attempt_agfl"),
+                               config.getboolean("soul","reject_agfl_failures"),
+                               config.getboolean("soul","agfl_nltk_fallback"))
+              if tagged_tweet: tagged_tweets.append(tagged_tweet)
             print "Loaded tweet #"+str(len(tagged_tweets)) #+"/"+str(len(files))
         # .twt: plain-text tweets, 1 per line
         elif f.endswith(".twt"):
@@ -65,13 +69,16 @@ class CorpusSoul:
             if txt[0] == '@': txt = re.sub('^@[\S]+ ', '', txt)
             for e in clean_ents:
               txt = re.sub(e[0], e[1], txt)
-            tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
-            self.vocab.update(tokens)
-            tagged_tweet = pos_tag(tokens,
-                             config.getboolean("soul","attempt_agfl"),
-                             config.getboolean("soul","reject_agfl_failures"),
-                             config.getboolean("soul","agfl_nltk_fallback"))
-            if tagged_tweet: tagged_tweets.append(tagged_tweet)
+            if self.quote_engine_only:
+              tagged_tweets.append(txt)
+            else:
+              tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
+              self.vocab.update(tokens)
+              tagged_tweet = pos_tag(tokens,
+                               config.getboolean("soul","attempt_agfl"),
+                               config.getboolean("soul","reject_agfl_failures"),
+                               config.getboolean("soul","agfl_nltk_fallback"))
+              if tagged_tweet: tagged_tweets.append(tagged_tweet)
             print "Loaded tweet #"+str(len(tagged_tweets)) #+"/"+str(len(files))
           pass
         # .post: long-winded material (blog/mailinglist posts, essays, articles, etc)
@@ -83,15 +90,18 @@ class CorpusSoul:
             #txt = txt.encode('ascii', 'ignore')
             for e in clean_ents:
               txt = re.sub(e[0], e[1], txt)
-            tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
-            if tokens:
-              self.vocab.update(tokens)
-              tagged_tweet = pos_tag(tokens,
-                              config.getboolean("soul","attempt_agfl"),
-                              config.getboolean("soul","reject_agfl_failures"),
-                              config.getboolean("soul","agfl_nltk_fallback"))
-              if tagged_tweet: tagged_tweets.append(tagged_tweet)
-              print "Loaded post-tweet #"+str(len(tagged_tweets))
+            if self.quote_engine_only:
+              tagged_tweets.append(txt)
+            else:
+              tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
+              if tokens:
+                self.vocab.update(tokens)
+                tagged_tweet = pos_tag(tokens,
+                               config.getboolean("soul","attempt_agfl"),
+                               config.getboolean("soul","reject_agfl_failures"),
+                               config.getboolean("soul","agfl_nltk_fallback"))
+                if tagged_tweet: tagged_tweets.append(tagged_tweet)
+            print "Loaded post-tweet #"+str(len(tagged_tweets))
         # .irclog: irc log files. irssi format.
         elif f.endswith(".irclog"):
           pass

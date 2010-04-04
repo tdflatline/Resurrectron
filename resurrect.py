@@ -117,7 +117,7 @@ porter = nltk.PorterStemmer()
 #    - Possibly keep appending these keywords to queries
 class ConversationContext:
   def __init__(self, nick,
-               decay=(1.0-config.getfloat("brain","memory_decay_rate"))):
+               decay=(1.0-config.getfloat("query","memory_decay_rate"))):
     self.nick = nick
     self.normalizer = TokenNormalizer()
     self.decay = decay
@@ -235,7 +235,7 @@ class TextWordInfo:
 class SearchableText:
   def __init__(self, text, tokens=None, tagged_tokens=None, strip=False,
                hidden_text="",
-               generalize_terms=config.getboolean('brain', 'generalize_terms')):
+               generalize_terms=config.getboolean('query', 'generalize_terms')):
     if hidden_text:
       hidden_text = hidden_text.rstrip()
       if not curses.ascii.ispunct(hidden_text[-1]):
@@ -333,7 +333,7 @@ class SearchableText:
 
 class SearchableTextCollection:
   def __init__(self, vocab, texts=[],
-               generalize_terms=config.getboolean('brain', 'generalize_terms')):
+               generalize_terms=config.getboolean('query', 'generalize_terms')):
     self._idf_cache = {}
     self.texts = texts
     if generalize_terms:
@@ -424,7 +424,7 @@ class SearchableTextCollection:
         # So far doesn't seem too expensive though.
         for tag in query_text.word_info[dt].pos_counts.iterkeys():
           try:
-            weight = config.getfloat('brain', tag+"_weight")
+            weight = config.getfloat('query', tag+"_weight")
           except NoOptionError:
             weight = 1.0
           new_score += weight*query_text.word_info[dt].pos_counts[tag]
@@ -572,21 +572,40 @@ class TwitterBrain:
     self.restart(soul) # Must come last!
 
   def restart(self, soul):
-    if config.getfloat("brain","tweet_pool_multiplier") > 0:
-      self.pending_goal = min(len(soul.tagged_tweets) * \
-           config.getfloat("brain","tweet_pool_multiplier"),
-                   config.getint("brain", "tweet_pool_max"))
-    else:
-      self.pending_goal = config.getint("brain", "tweet_pool_max")
-    self.low_watermark = self.pending_goal - 85 # FIXME: config?
-    self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer,
-                          config.getint("brain", "hmm_context"),
-                          config.getint("brain", "hmm_offset"))
-    if self.pending_tweets.needs_update:
-      self.pending_tweets.update_matrix()
+    self.quote_engine_only = soul.quote_engine_only
     self.work_lock = threading.Lock()
     self._shutdown = False
     self._thread = threading.Thread(target=self.__phrase_worker)
+    if self.quote_engine_only:
+      self.voice = None
+      if len(self.pending_tweets.texts) == len(easter_eggs.xkcd):
+        self.pending_goal = len(soul.tagged_tweets)
+        self.low_watermark = 0
+        # Copy soul.tagged_tweets into pending_tweets
+        print "Loading quotes into query engine.."
+        for tweet in soul.tagged_tweets:
+          self.pending_tweets.add_text(SearchableText(tweet))
+          if len(self.pending_tweets.texts) % 100 == 0:
+            print "Loaded quote #"+str(len(self.pending_tweets.texts))+"/"+\
+                     str(len(soul.tagged_tweets))
+        print "Loaded quotes into query engine."
+        self.pending_tweets.update_matrix()
+        BrainReader.write(self, "target_user.brain")
+    else:
+      if config.getfloat("brain","tweet_pool_multiplier") > 0:
+        self.pending_goal = min(len(soul.tagged_tweets) * \
+             config.getfloat("brain","tweet_pool_multiplier"),
+                     config.getint("brain", "tweet_pool_max"))
+      else:
+        self.pending_goal = config.getint("brain", "tweet_pool_max")
+
+      self.low_watermark = self.pending_goal - 85 # FIXME: config?
+      self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer,
+                            config.getint("brain", "hmm_context"),
+                            config.getint("brain", "hmm_offset"))
+      if self.pending_tweets.needs_update:
+        self.pending_tweets.update_matrix()
+
     self._thread.start()
 
   # TODO: We could normalize for tense agreement... might be a bad idea
@@ -622,9 +641,9 @@ class TwitterBrain:
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
       if followed:
-        min_score = config.getfloat('brain', 'min_follow_reply_score')
+        min_score = config.getfloat('query', 'min_follow_reply_score')
       else:
-        min_score = config.getfloat('brain', 'min_msg_reply_score')
+        min_score = config.getfloat('query', 'min_msg_reply_score')
 
       if score >= min_score:
         self.last_vect = last_vect
@@ -716,6 +735,16 @@ class TwitterBrain:
         added_tweets = True
         self.__unlock()
 
+      if self.quote_engine_only:
+        if added_tweets:
+          self.__lock()
+          self.pending_tweets.update_matrix()
+          self.__unlock()
+          first_run=False
+          BrainReader.write(self, "target_user.brain")
+        time.sleep(2)
+        continue
+
       # Need low watermark. Maybe goal-100?
       if len(self.pending_tweets.texts) <= self.low_watermark:
         while len(self.pending_tweets.texts) < self.pending_goal:
@@ -728,8 +757,7 @@ class TwitterBrain:
             continue
 
           self.pending_tweets.add_text(
-                      SearchableText(tweet,tokens,tagged_tokens),
-                      update=(not first_run))
+                       SearchableText(tweet,tokens,tagged_tokens))
           print "At tweet count "+str(len(self.pending_tweets.texts))+\
                   "/"+str(self.pending_goal)
           added_tweets = True

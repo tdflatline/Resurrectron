@@ -37,6 +37,8 @@ Shorter term:
 
 Longer term:
  - randomly lament about missing Foursquare top12 locations
+   - Also use 4square data for location tags for tweets
+ - Use URL contents for TF-IDF in quote_engine_only mode.
  - May need Word-sense disambiguation to trim down wordnet's
    hyponym and hypernym sets.
  - train multiple HMM's on topically classified/tagged text.
