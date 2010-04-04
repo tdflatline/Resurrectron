@@ -24,6 +24,11 @@ Shorter term:
    - Deal with AGFL's [1] and [2] POS tree references..
    - Retry questions as statements if they fail..
  - Other random XXX's, FIXME's and TODO's in the source.
+ - We can improve nltk.pos_tag using:
+   https://groups.google.com/group/nltk-users/browse_thread/thread/5af97ff339e13b5a
+   http://streamhacker.com/2008/11/03/part-of-speech-tagging-with-nltk-part-1/
+   http://streamhacker.com/2008/11/10/part-of-speech-tagging-with-nltk-part-2/
+   http://streamhacker.com/2008/12/03/part-of-speech-tagging-with-nltk-part-3/
 
 Longer term:
  - randomly lament about missing Foursquare top12 locations
@@ -44,6 +49,8 @@ Longer term:
      self.voice.say_something and self.__did_already_tweet)
    - This would yield a two stage map-reduce: one stage to tag
      the corpus and the next to generate a tweet pool.
+   - execnet seems like the solution we'd want:
+     http://streamhacker.com/2009/11/29/distributed-nltk-execnet/
  - Alter HMM output based on query?
    - Instead of maintaining a tweet pool for TF-IDF, we could try to directly
      influence the HMM states based on query vocab.

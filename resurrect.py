@@ -61,6 +61,8 @@ class POSTrim:
 class QueryStripper:
   kill_pos = set(["RP", "CC", "MD", "PDT", "POS", "TO", "WDT", "WP", "WP$",
                   "WRB", "DT", "EX", ".", ":"])
+  # Hrmm.. do we really want to do this? We could move all this to the
+  # POS weights and leave linking verbs in there.
   kill_words = set(["am", "are", "is", "was", "were", "be", "being", "been"])
   @classmethod
   def strip_tagged_query(cls, tagged_query):
@@ -144,6 +146,9 @@ class ConversationContext:
     no_nouns = True
     nouns_out = 0
     for w in query_text.word_info:
+      # words with no vector index were not in our vocab
+      if query_text.word_info[w].vector_idx == -1: continue
+
       for tag in query_text.word_info[w].pos_counts:
         if tag == "NN":
           if self.memory_vector[query_text.word_info[w].vector_idx] < 0.00001:
@@ -154,11 +159,15 @@ class ConversationContext:
             nouns_in += 1
 
     if all_nouns:
+      print "All nouns present. Using normal decay"
       decay = self.decay
     elif not no_nouns:
       # Decay should be ratio of old nouns to new nouns
-      decay = (self.decay*float(nouns_in))/(nouns_in+nouns_out)
+      decay = float(nouns_in)/(nouns_in+nouns_out)
+      print "Fraction of nouns present: "+str(decay)
+      decay *= self.decay
     else: # not all_nouns and no_nouns
+      print "No nouns present. Full decay"
       decay = 0 # nouns_in == 0
     return decay
 
@@ -395,6 +404,10 @@ class SearchableTextCollection:
     if self.needs_update: self.update_matrix()
 
     print "Building Qvector.."
+
+    for w in query_text.word_info.iterkeys():
+      query_text.word_info[w].vector_idx = -1
+
     q = []
     idx = 0
     for dt in self.vocab:
