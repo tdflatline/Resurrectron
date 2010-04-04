@@ -23,7 +23,6 @@ Shorter term:
    - Add modern lexicon like 'blog', 'tweet', 'gmail', 'email' to the grammar
    - Deal with AGFL's [1] and [2] POS tree references..
    - Retry questions as statements if they fail..
- - Add a quote engine mode
  - Other random XXX's, FIXME's and TODO's in the source.
  - Need to move capitalization model to bigram/trigram.
  - We can improve nltk.pos_tag using:
