@@ -831,9 +831,9 @@ class StdinLoop(cmd.Cmd):
     if not query:
       str_result = self.brain.get_tweet()
     elif query == ":w":
-      BrainReader.write(self, "target_user.brain")
+      BrainReader.write(self.brain, "target_user.brain")
     elif query == ":wq":
-      BrainReader.write(self, "target_user.brain")
+      BrainReader.write(self.brain, "target_user.brain")
       print "Exiting Command loop."
       sys.exit(0)
     elif query == ":q!" or query == "EOF":
