@@ -1,17 +1,12 @@
 Ideas for future work.
 
 Shorter term:
- - Amplify nouns in query vectors to make responses more topical
-   - Make this configurable for verbs, adverbs and adjectives too
  - Give the AI a body (twitter)
    - Post at random time intervals
      - Learn sleep cycles of input corpus if jtwt is available.
        - Do this via post/hour frequency models
        - Allow user to specify a model
    - Respond to @msgs/direct messages
-     - Only respond if some minimal TF-IDF score is met.
-     - Need pronoun logic for how to dampen last thing bot said. See source
-       code for ideas.
    - Use some really high TF-IDF threshold to @msg followers when they say
      something "interesting"
      - Will also need to rate limit this behavior in case multiple
