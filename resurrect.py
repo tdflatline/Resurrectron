@@ -221,6 +221,12 @@ class SearchableText:
       # http://nodebox.net/code/index.php/Linguistics
       # Also add normalized versions with en.spelling() first
       new_terms = set()
+      # FIXME: Hrmm.. maybe don't use a set here..
+      # FIXME: This is biasing results. Words with lots of hyponyms are being
+      # favored by TF-IDF. We need word sense disambiguation to prune this
+      # down.
+      # http://groups.google.com/group/nltk-users/browse_thread/thread/ad191241e5d9ee78
+
       for v in xrange(len(search_tokens)):
         sv = search_tokens[v]
         # en.spelling.correct(v)
