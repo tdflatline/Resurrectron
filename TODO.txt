@@ -2,6 +2,7 @@ Ideas for future work.
 
 Shorter term:
  - Amplify nouns in query vectors to make responses more topical
+   - Make this configurable for verbs, adverbs and adjectives too
  - Give the AI a body (twitter)
    - Post at random time intervals
      - Learn sleep cycles of input corpus if jtwt is available.
@@ -9,7 +10,8 @@ Shorter term:
        - Allow user to specify a model
    - Respond to @msgs/direct messages
      - Only respond if some minimal TF-IDF score is met.
-     - Need pronoun logic for how to dampen last thing bot said.
+     - Need pronoun logic for how to dampen last thing bot said. See source
+       code for ideas.
    - Use some really high TF-IDF threshold to @msg followers when they say
      something "interesting"
      - Will also need to rate limit this behavior in case multiple
@@ -30,6 +32,8 @@ Shorter term:
 
 Longer term:
  - randomly lament about missing Foursquare top12 locations
+ - May need Word-sense disambgiuation to trim down wordnet's
+   hyponym and hypernym sets.
  - train multiple HMM's on topically classified/tagged text.
    - This will prevent topic bleedover and keep tweets more sensible.
    - Can possibly even cluster corpus tweets using an unsupervised algorithm
