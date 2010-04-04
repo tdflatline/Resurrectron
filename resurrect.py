@@ -60,8 +60,8 @@ class POSTrim:
 # EX: existential there
 class QueryStripper:
   kill_pos = set(["RP", "CC", "MD", "PDT", "POS", "TO", "WDT", "WP", "WP$",
-                  "WRB", "DT", "EX", "."])
-  kill_words = set(["am", "are", "is", "was", "were"])
+                  "WRB", "DT", "EX", ".", ":"])
+  kill_words = set(["am", "are", "is", "was", "were", "be", "being", "been"])
   @classmethod
   def strip_tagged_query(cls, tagged_query):
     ret = []
@@ -129,13 +129,46 @@ class ConversationContext:
       self.memory_vector = vector
       self.last_query_time = now
 
-  def decay_query(self, q_vector):
+  def get_decay(self, query_text):
+    # Memory decay:
+    #   If no nouns in query_text:
+    #     decay = 0
+    #   If all nouns in query_text are present in conv.last_vect:
+    #     decay = 0
+    #   If nouns in conv.last_vect but other nouns present too:
+    #     decay = 0.25-0.5
+    #   If all nouns in query_text are not present in conv.last_vect:
+    #     decay = 1.0
+    all_nouns = True
+    nouns_in = 0
+    no_nouns = True
+    nouns_out = 0
+    for w in query_text.word_info:
+      for tag in query_text.word_info[w].pos_counts:
+        if tag == "NN":
+          if self.memory_vector[query_text.word_info[w].vector_idx] < 0.00001:
+            all_nouns = False
+            nouns_out += 1
+          else:
+            no_nouns = False
+            nouns_in += 1
+
+    if all_nouns:
+      decay = self.decay
+    elif not no_nouns:
+      # Decay should be ratio of old nouns to new nouns
+      decay = (self.decay*float(nouns_in))/(nouns_in+nouns_out)
+    else: # not all_nouns and no_nouns
+      decay = 0 # nouns_in == 0
+    return decay
+
+  def decay_query(self, q_vector, query_text):
     now = time.time()
     if now - self.last_query_time > 12*60*60:
       print "Expiring stale memory query for user: "+self.nick
       self.memory_vector = None
     if self.memory_vector != None:
-      self.memory_vector *= self.decay
+      self.memory_vector *= self.get_decay(query_text)
       self.memory_vector += q_vector
     else:
       self.memory_vector = q_vector
@@ -184,10 +217,11 @@ class URLClassifier:
 
 class TextWordInfo:
   def __init__(self):
-    # XXX: Are we going to use vector_idx?
-    self.vector_idx = -1 # index in the global vocab/score vector
     self.count = 0 # occurrence in parent text body
     self.pos_counts = {} # POSTrimmed nltk tag
+    # vector_idx is only used for @msg queries. It is not used for
+    # matrix computation. It is left off to save space.
+    #self.vector_idx = -1 # index in the global vocab/score vector
 
 class SearchableText:
   def __init__(self, text, tokens=None, tagged_tokens=None, strip=False,
@@ -339,9 +373,13 @@ class SearchableTextCollection:
     self.D = []
     for doc in self.texts:
       d = []
+      idx = 0
       for dt in self.vocab:
-        if dt in doc.word_info: d.append(self.tf_idf(dt, doc))
+        if dt in doc.word_info:
+          d.append(self.tf_idf(dt, doc))
+          #doc.word_info[dt].vector_idx = idx
         else: d.append(0.0)
+        idx += 1
       d = numpy.array(d)
       norm = math.sqrt(numpy.dot(d,d))
       if norm <= 0:
@@ -353,14 +391,12 @@ class SearchableTextCollection:
     print "Computed score matrix."
     self.needs_update = False
 
-  def score_query(self, query_string):
+  def score_query(self, query_text):
     if self.needs_update: self.update_matrix()
-    query_string = PronounInverter.invert_all(query_string)
-    print "Inverted Query: "+query_string
-    query_text = SearchableText(query_string, strip=True)
 
     print "Building Qvector.."
     q = []
+    idx = 0
     for dt in self.vocab:
       if dt in query_text.word_info:
         # Amplify nouns and dampen adjectives and verbs:
@@ -370,6 +406,7 @@ class SearchableTextCollection:
         score = self.tf_idf(dt, query_text)
         score /= query_text.word_info[dt].count
         new_score = 0.0
+        query_text.word_info[dt].vector_idx = idx
         # FIXME: Can maybe optmize this by moving it out of the loop...
         # So far doesn't seem too expensive though.
         for tag in query_text.word_info[dt].pos_counts.iterkeys():
@@ -381,6 +418,8 @@ class SearchableTextCollection:
         q.append(new_score)
       else:
         q.append(0.0)
+      idx += 1
+
 
     q = numpy.array(q)
     # Numpy is retarded here.. Need to special case 0
@@ -390,10 +429,10 @@ class SearchableTextCollection:
     print "Qvector built"
     return q
 
-  def query_string(self, query_string, exclude=[],
+  def text_query(self, query_text, exclude=[],
                    max_len=config.getint("brain","tweet_len"),
                    randomize_top=1):
-    if not query_string:
+    if not query_text:
       while True:
         retidx = random.randint(0, len(self.texts)-1)
         ret = self.texts[retidx]
@@ -403,10 +442,10 @@ class SearchableTextCollection:
           break
       return (0, self.D[retidx], ret)
 
-    return self.query_vector(self.score_query(query_string), exclude, max_len,
+    return self.vector_query(self.score_query(query_text), exclude, max_len,
                       randomize_top)
 
-  def query_vector(self, query_vector, exclude=[],
+  def vector_query(self, query_vector, exclude=[],
                    max_len=config.getint("brain","tweet_len"),
                    randomize_top=1):
     q = query_vector
@@ -423,12 +462,12 @@ class SearchableTextCollection:
 
     print "Matrix multiplied"
 
-    # FIXME: hrmm. This will mess with our pronoun logic
     if tot_score == 0.0:
-      print "Zero score.. Recursing"
-      return self.query_string(
-              "WTF buh uh huh dunno what talking about understand",
-              exclude, max_len, randomize_top)
+      print "Zero score..."
+      return (0, None, None)
+      #return self.query_string(
+      #        "WTF buh uh huh dunno what talking about understand",
+      #        exclude, max_len, randomize_top)
 
     # FIXME: Could also eliminate this sort if we decide we never
     # want to randomize.
@@ -541,31 +580,34 @@ class TwitterBrain:
   # though.
   # http://nodebox.net/code/index.php/Linguistics
   # en.is_verb() with en.verb.tense() and en.verb.conjugate()
-  def get_tweet(self, msger=None, query=None, followed=False):
+  def get_tweet(self, msger=None, query_string=None, followed=False):
     self.__lock()
     if msger and msger not in self.conversation_contexts:
       self.conversation_contexts[msger] = ConversationContext(msger)
     max_len = config.getint("brain","tweet_len")
-    if query and msger:
-      # XXX: Only prime memory if no nouns in query, or if only nouns
-      # present are also present in the last_vect.
-      # If other nouns and no noun matches, ignore last_vect,
-      # otherwise if other nouns dampen it by 0.25-0.5
-      # otherwise, don't dampen
-      if self.last_vect != None:
-        self.conversation_contexts[msger].prime_memory(self.last_vect)
-      query = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query)))
-      max_len -= len("@"+msger+" ")
-      # FIXME: Hrmm, should we add followed tweets to the memory even if
-      # we decide to ignore them?
+    if query_string and msger:
       # XXX: nltk.pos_tag doesn't do so well if the first word in a question
-      # is capitalized
-      qvect = self.conversation_contexts[msger].decay_query(
-                   self.pending_tweets.score_query(query))
-      (score, last_vect, ret) = self.pending_tweets.query_vector(qvect,
+      # is capitalized. Should we add an option to the normalizer for this?
+      query_string = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query_string)))
+      query_string = PronounInverter.invert_all(query_string)
+
+      print "Normalized Inverted Query: "+query_string
+      query_text = SearchableText(query_string, strip=True)
+      curr_vect = self.pending_tweets.score_query(query_text)
+
+      if followed:
+        qvect = curr_vect
+      else:
+        if self.last_vect != None:
+          self.conversation_contexts[msger].prime_memory(self.last_vect)
+
+        qvect = self.conversation_contexts[msger].decay_query(curr_vect,
+                                                              query_text)
+
+      max_len -= len("@"+msger+" ")
+      (score, last_vect, ret) = self.pending_tweets.vector_query(qvect,
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
-
       if followed:
         min_score = config.getfloat('brain', 'min_follow_reply_score')
       else:
@@ -578,9 +620,20 @@ class TwitterBrain:
         print str(ret.tagged_tokens)
         print "Not responding with: "+ret.text
         return None
+      if followed:
+        # If this was a followed tweet, we should now record that it made
+        # us say something.
+        self.conversation_contexts[msger].decay_query(curr_vect, query_text)
+
+      # Remember the last thing we said.
       self.conversation_contexts[msger].remember_query(self.last_vect)
     else:
-      (score, self.last_vect, ret) = self.pending_tweets.query_string(query,
+      # query should be None here
+      if query_string:
+        query_text = SearchableText(query_string, strip=True)
+      else:
+        query_text = None
+      (score, self.last_vect, ret) = self.pending_tweets.text_query(query_text,
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
     self.remove_tweets.append(ret)
