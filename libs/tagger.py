@@ -51,7 +51,11 @@ class AGFLTweaker:
     while fixed:
       fixed = False
       for t in xrange(len(nltk_tags)):
-        tokens[t] = re.sub(r"\.\.[\.]+", "...", tokens[t])
+        #no_elipses = re.sub(r"\.\.[\.]+", ".", tokens[t])
+        # XXX: This may not be the best way to do this.. perhaps
+        # move to the normalizer
+        #self.sub_map[tokens[t]] = no_elipses
+        #tokens[t] = no_elipses
         if nltk_tags[t][0] == "'s":
           # FIXME: Add to normalizer/undo?
           if nltk_tags[t][1] == "VBZ":
@@ -204,7 +208,7 @@ def pos_tag(tokens, try_agfl=True, reject_agfl_fails=True,
       if not s:
         print "Empty string for: "+str(stokens)
         continue
-      #print "Parsing: |"+s+"|"
+      print "Parsing: |"+s+"|"
       agfl_tree = agfl.parse_sentence(s)
       # XXX: We can re-try failed '?' with '.'..
       if not agfl_tree:

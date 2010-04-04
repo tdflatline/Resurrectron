@@ -71,10 +71,12 @@ class TokenNormalizer:
     # Also handle stupid sentence-terminating punctuation.
     self.mono_regex = [("\*([\S]+)\*", r"\1"),
                        ("\/([\S]+)\/", r"\1"),
+                       ("_([\S]+)_", r"\1"),
                        ("\'([\S]+)\'", r"\1"),
                        (r"(\S+)in\'", r"\1ing"),
                        (r"^(?:[\/1]*[\?\!]+[\/1]*){2,}$", "?"),
-                       # AGFL handles "." much better than "!"...
+                       # AGFL handles "." much better than "!" or "..."
+                       (r"\.\.[\.]+", "."),
                        (r"^(?:[1]*[\!]+[1]*){2,}$", ".")]
 
 
@@ -310,6 +312,8 @@ class TokenNormalizer:
   def normalize_tokens(self, tokens):
     ret_tokens = []
 
+    if not tokens: return []
+
     # Track capitalization of sentences
     if tokens[0][0].isupper():
       self.sentences_capitalized += 1
@@ -325,6 +329,7 @@ class TokenNormalizer:
       else:
         ltoken = tokens[i].lower()
         # Model capitalization
+        # XXX: Use a bigram model here.
         if ltoken in self.capital_words:
           if (tokens[i] == "I" or not tokens[i].isupper()) \
                    and tokens[i][0].isupper():

@@ -361,8 +361,8 @@ class SearchableTextCollection:
       self.update_matrix()
 
   def add_text(self, text, update=False):
-    self.texts.append(text)
     self.needs_update = True
+    self.texts.append(text)
     if update: self.update_matrix()
 
   def remove_text(self, text, update=False):
@@ -445,6 +445,7 @@ class SearchableTextCollection:
   def text_query(self, query_text, exclude=[],
                    max_len=config.getint("brain","tweet_len"),
                    randomize_top=1):
+    if self.needs_update: self.update_matrix()
     if not query_text:
       while True:
         retidx = random.randint(0, len(self.texts)-1)
@@ -453,6 +454,9 @@ class SearchableTextCollection:
         # or pointer comparison.
         if not ret.hidden_text and ret not in exclude:
           break
+      print retidx
+      print len(self.texts)
+      print len(self.D)
       return (0, self.D[retidx], ret)
 
     return self.vector_query(self.score_query(query_text), exclude, max_len,
@@ -461,6 +465,7 @@ class SearchableTextCollection:
   def vector_query(self, query_vector, exclude=[],
                    max_len=config.getint("brain","tweet_len"),
                    randomize_top=1):
+    if self.needs_update: self.update_matrix()
     q = query_vector
 
     # FIXME: Could actually turn this into a proper numpy matrix multiply
