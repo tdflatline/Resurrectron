@@ -23,16 +23,21 @@ Shorter term:
    - Add modern lexicon like 'blog', 'tweet', 'gmail', 'email' to the grammar
    - Deal with AGFL's [1] and [2] POS tree references..
    - Retry questions as statements if they fail..
+ - Add a quote engine mode
  - Other random XXX's, FIXME's and TODO's in the source.
+ - Need to move capitalization model to bigram/trigram.
  - We can improve nltk.pos_tag using:
    https://groups.google.com/group/nltk-users/browse_thread/thread/5af97ff339e13b5a
    http://streamhacker.com/2008/11/03/part-of-speech-tagging-with-nltk-part-1/
    http://streamhacker.com/2008/11/10/part-of-speech-tagging-with-nltk-part-2/
    http://streamhacker.com/2008/12/03/part-of-speech-tagging-with-nltk-part-3/
+   - What portions of brown was this against?
+   - What position for 3gram? Why not 4Gram tagger?
+   - Why did you not use nltk.pos_tag as a backoff?
 
 Longer term:
  - randomly lament about missing Foursquare top12 locations
- - May need Word-sense disambgiuation to trim down wordnet's
+ - May need Word-sense disambiguation to trim down wordnet's
    hyponym and hypernym sets.
  - train multiple HMM's on topically classified/tagged text.
    - This will prevent topic bleedover and keep tweets more sensible.
