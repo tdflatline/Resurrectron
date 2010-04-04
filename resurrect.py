@@ -364,8 +364,15 @@ class SearchableTextCollection:
                    max_len=config.getint("brain","tweet_len"),
                    randomize_top=1):
     if not query_string:
-      print "Empty query!"
-      return random.choice(self.texts)
+      while True:
+        retidx = random.randint(0, len(self.texts)-1)
+        ret = self.texts[retidx]
+        # hrmm.. make this a set? hrmm. depends on if its a hash
+        # or pointer comparison.
+        if not ret.hidden_text and ret not in exclude:
+          break
+      return (0, self.D[retidx], ret)
+
     return self.query_vector(self.score_query(query_string), exclude, max_len,
                       randomize_top)
 
@@ -419,11 +426,11 @@ class SearchableTextCollection:
         self.print_score(q, self.D[sorted_scores[i][1]])
         print "Rand score: "+str(sorted_scores[i][0])+"/"+str(sorted_scores[0][0])
         print "Choice: "+str(choice)+" count: "+str(count)+" top_quater: "+str(top_quart)
-        return (self.D[sorted_scores[i][1]],
+        return (sorted_scores[i][0], self.D[sorted_scores[i][1]],
                     self.texts[sorted_scores[i][1]])
     print "WTF? No doc found: "+str(count)+" "+str(tot_score)
     retidx = random.randint(0, len(self.texts)-1)
-    return (self.D[retidx], self.texts[retidx])
+    return (sorted_scores[retidx][0], self.D[retidx], self.texts[retidx])
 
   def print_score(self, q, resp):
     for i in xrange(len(resp)):
@@ -499,50 +506,55 @@ class TwitterBrain:
   # though.
   # http://nodebox.net/code/index.php/Linguistics
   # en.is_verb() with en.verb.tense() and en.verb.conjugate()
-  def get_tweet(self, msger=None, query=None):
+  def get_tweet(self, msger=None, query=None, followed=False):
     self.__lock()
     if msger and msger not in self.conversation_contexts:
       self.conversation_contexts[msger] = ConversationContext(msger)
     max_len = config.getint("brain","tweet_len")
-    if query:
-      if msger:
-        # TODO: Only prime memory if excessive pronouns in query?
-        # Or, change the weights between the query and the last vector..
-        # If no pronouns, dampen last_vect by 0.5? if only pronouns,
-        # don't dampen?
-        # Actually, need to check match first. If the nouns match the
-        # last_vect, don't dampen either.
-        if self.last_vect != None:
-          self.conversation_contexts[msger].prime_memory(self.last_vect)
-        query = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query)))
-        max_len -= len("@"+msger+" ")
-        qvect = self.conversation_contexts[msger].decay_query(
-                     self.pending_tweets.score_query(query))
-        (self.last_vect, ret) = self.pending_tweets.query_vector(qvect,
+    if query and msger:
+      # XXX: Only prime memory if no nouns in query, or if only nouns
+      # present are also present in the last_vect.
+      # If other nouns and no noun matches, ignore last_vect,
+      # otherwise if other nouns dampen it by 0.25-0.5
+      # otherwise, don't dampen
+      if self.last_vect != None:
+        self.conversation_contexts[msger].prime_memory(self.last_vect)
+      query = word_detokenize(self.conversation_contexts[msger].normalizer.normalize_tokens(word_tokenize(query)))
+      max_len -= len("@"+msger+" ")
+      # FIXME: Hrmm, should we add followed tweets to the memory even if
+      # we decide to ignore them?
+      qvect = self.conversation_contexts[msger].decay_query(
+                   self.pending_tweets.score_query(query))
+      (score, last_vect, ret) = self.pending_tweets.query_vector(qvect,
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
-        self.conversation_contexts[msger].remember_query(self.last_vect)
+
+      if followed:
+        min_score = config.getfloat('brain', 'min_follow_reply_score')
       else:
-        query = word_detokenize(self.raw_normalizer.normalize_tokens(word_tokenize(query)))
-        # FIXME: Should it maybe remember more than the most recent query?
-        (self.last_vect, ret) = self.pending_tweets.query_string(query,
+        min_score = config.getfloat('brain', 'min_msg_reply_score')
+
+      if score >= min_score:
+        self.last_vect = last_vect
+      else:
+        print "Minimum score of "+str(min_score)+" not met: "+str(score)
+        print str(ret.tagged_tokens)
+        print "Not responding with: "+ret.text
+        return None
+      self.conversation_contexts[msger].remember_query(self.last_vect)
+    else:
+      (score, self.last_vect, ret) = self.pending_tweets.query_string(query,
                                       exclude=self.remove_tweets,
                                       max_len=max_len)
-    else:
-      while True:
-        ret = random.choice(self.pending_tweets.texts)
-        # hrmm.. make this a set? hrmm. depends on if its a hash
-        # or pointer comparison.
-        if not ret.hidden_text and ret not in self.remove_tweets:
-          break
     self.remove_tweets.append(ret)
     tokens = ret.tokens()
     self.already_tweeted.append(set(tokens))
     self.__unlock()
+    print str(ret.tagged_tokens)
     if msger:
-      return ("@"+msger+" "+ret.text, tokens, ret.tagged_tokens)
+      return "@"+msger+" "+ret.text
     else:
-      return (ret.text, tokens, ret.tagged_tokens)
+      return ret.text
 
   def __did_already_tweet(self, words,
                           max_score=config.getfloat("brain","max_shared_word_ratio")):
@@ -681,7 +693,7 @@ class StdinLoop(cmd.Cmd):
     self.brain = brain
   def onecmd(self, query):
     if not query:
-      (str_result, tokens, tagged_tokens) = self.brain.get_tweet()
+      str_result = self.brain.get_tweet()
     elif query == ":w":
       BrainReader.write(self, "target_user.brain")
     elif query == ":wq":
@@ -692,8 +704,7 @@ class StdinLoop(cmd.Cmd):
       print "Exiting Command loop."
       sys.exit(0)
     else:
-      (str_result, tokens, tagged_tokens) = self.brain.get_tweet("You", query)
-    print str(tagged_tokens)
+      str_result = self.brain.get_tweet("You", query)
     print str_result
 
 def main():
