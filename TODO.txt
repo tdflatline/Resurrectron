@@ -37,6 +37,11 @@ Shorter term:
 Longer term:
  - randomly lament about missing Foursquare top12 locations
    - Also use 4square data for location tags for tweets
+   - The bot can also geotag tweets with 4square location information
+     and actually check in to locations on the 4square list.
+     - 4square has an api for this we can use.
+     - we can prime the memory vector with terms related to the current
+       4square location so tweets while it is at a location are topical.
  - Use URL contents for TF-IDF in quote_engine_only mode.
  - May need Word-sense disambiguation to trim down wordnet's
    hyponym and hypernym sets.
