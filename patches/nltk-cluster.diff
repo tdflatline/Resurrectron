@@ -1,0 +1,37 @@
+diff -ur nltk-2.0b8/nltk/cluster/util.py nltk-2.0b8.orig/nltk/cluster/util.py
+--- nltk-2.0b8/nltk/cluster/util.py	2010-04-05 03:58:01.994668794 -0700
++++ nltk-2.0b8.orig/nltk/cluster/util.py	2010-01-26 13:29:16.000000000 -0800
+@@ -111,32 +111,15 @@
+     Returns the euclidean distance between vectors u and v. This is equivalent
+     to the length of the vector (u - v).
+     """
+-    if type(u[0]) == numpy.float32: u = u.astype(numpy.float64)
+-    if type(v[0]) == numpy.float32: v = v.astype(numpy.float64)
+-
+     diff = u - v
+     return math.sqrt(numpy.dot(diff, diff))
+ 
+-def norm_cosine_distance(u, v):
+-    """
+-    Returns the cosine of the angle between vectors v and u. This is equal to
+-    u.v iff the vectors are already normalized
+-    """
+-    if type(u[0]) == numpy.float32: u = u.astype(numpy.float64)
+-    if type(v[0]) == numpy.float32: v = v.astype(numpy.float64)
+-
+-    return numpy.dot(u, v)
+-
+ def cosine_distance(u, v):
+     """
+     Returns the cosine of the angle between vectors v and u. This is equal to
+     u.v / |u||v|.
+     """
+-    if type(u[0]) == numpy.float32: u = u.astype(numpy.float64)
+-    if type(v[0]) == numpy.float32: v = v.astype(numpy.float64)
+-
+-    return numpy.dot(u, v) / (math.sqrt(numpy.dot(u, u) * numpy.dot(v, v)))
+-
++    return numpy.dot(u, v) / (math.sqrt(numpy.dot(u, u)) * math.sqrt(numpy.dot(v, v)))
+ 
+ class _DendrogramNode(object):
+     """ Tree node of a dendrogram. """
