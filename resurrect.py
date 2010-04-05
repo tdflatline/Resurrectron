@@ -656,6 +656,7 @@ class TwitterBrain:
         print "Minimum score of "+str(min_score)+" not met: "+str(score)
         print str(ret.tagged_tokens)
         print "Not responding with: "+ret.text
+        self.__unlock()
         return None
       if followed:
         # If this was a followed tweet, we should now record that it made
