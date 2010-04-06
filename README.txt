@@ -28,3 +28,8 @@ during this process.
 
 This is still hackware. Don't expect it to be too useful if you don't
 know python.
+
+In particular, successive git commits may make your existing .soul
+and .brain files incompatible in surprising ways that usually end in
+a cryptic exception or crash. Right now the only thing you can do is
+remove them and retrain.
