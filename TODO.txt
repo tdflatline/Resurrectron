@@ -24,6 +24,10 @@ Body Tasks:
 
 
 AI/ML Tasks:
+ - Consider adding tropnyms and entailment to wordnet use.
+   May need to use nltk's wordnet instead of en's. Unless
+   en automatically includes troponyms and entailment in hyponyms?
+   - If we do this we can possibly ditch the en dependency.
  - Need to move capitalization model to bigram w/ unigram fallback...
    - some words should only captialized in pairs/streaks, others
      can be capitalized by themselves..
