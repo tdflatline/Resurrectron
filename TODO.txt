@@ -24,10 +24,14 @@ Body Tasks:
 
 
 AI/ML Tasks:
- - Consider adding tropnyms and entailment to wordnet use.
-   May need to use nltk's wordnet instead of en's. Unless
-   en automatically includes troponyms and entailment in hyponyms?
-   - If we do this we can possibly ditch the en dependency.
+ - Wordnet:
+   - Consider adding tropnyms and entailment to wordnet use.
+     May need to use nltk's wordnet instead of en's. Unless
+     en automatically includes troponyms and entailment in hyponyms?
+     - If we do this we can possibly ditch the en dependency.
+   - Add condif options to disable individual wordnet sets
+   - May need Word-sense disambiguation to trim down wordnet's
+     hyponym and hypernym sets.
  - Need to move capitalization model to bigram w/ unigram fallback...
    - some words should only captialized in pairs/streaks, others
      can be capitalized by themselves..
@@ -63,9 +67,7 @@ AI/ML Tasks:
    - Add modern lexicon like 'blog', 'tweet', 'gmail', 'email' to the grammar
    - Deal with AGFL's [1] and [2] POS tree references..
    - Retry questions as statements if they fail..
- - May need Word-sense disambiguation to trim down wordnet's
  - Use URL contents for TF-IDF in quote_engine_only mode.
-   hyponym and hypernym sets.
  - Do map-reduce for faster training on multi-core or even multi-node systems
    - The expensive functions are pos_tag() in extract.py and the
      __phrase_worker2() loop in resurrect.py (the combination of
@@ -76,6 +78,13 @@ AI/ML Tasks:
      http://streamhacker.com/2009/11/29/distributed-nltk-execnet/
  - Other random XXX's, FIXME's and TODO's in the source.
 
+General:
+ - Create a FAQ.txt
+   - Which params to tweak if query responses suck
+   - Which params to tweak if language sucks
+   - Which params to tweak if training takes too long
+ - Create an INSTALL.txt
+   - Use README.txt, and create a proper README.txt file
 
 Hypothetical/speculation:
  - Alter HMM output based on query?
