@@ -5,25 +5,25 @@
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 
-	<title>tdflatline/Resurrectron @ GitHub</title>
+	<title>The Dixie Flatline's Resurrectron Twitter AI @ GitHub</title>
 	
 	<style type="text/css">
 		body {
   		margin-top: 1.0em;
-  		background-color: #5ee226;
+  		background-color: white;
 		  font-family: "Helvetica,Arial,FreeSans";
-  		color: #ffffff;
+  		color: black;
     }
     #container {
       margin: 0 auto;
       width: 700px;
     }
-		h1 { font-size: 3.8em; color: #a11dd9; margin-bottom: 3px; }
+		h1 { font-size: 3.8em; color: black; margin-bottom: 3px; }
 		h1 .small { font-size: 0.4em; }
 		h1 a { text-decoration: none }
-		h2 { font-size: 1.5em; color: #a11dd9; }
-    h3 { text-align: center; color: #a11dd9; }
-    a { color: #a11dd9; }
+		h2 { font-size: 1.5em; color: black; }
+    h3 { text-align: center; color: black; }
+    .black { color: black; }
     .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
     .download { float: right; }
 		pre { background: #000; color: #fff; padding: 15px;}
@@ -45,31 +45,47 @@
         <img border="0" width="90" src="http://github.com/images/modules/download/tar.png"></a>
     </div>
 
-    <h1><a href="http://github.com/tdflatline/Resurrectron">Resurrectron</a>
-      <span class="small">by <a href="http://github.com/tdflatline">tdflatline</a></span></h1>
+    <h1><a class="black"
+    href="http://github.com/tdflatline/Resurrectron">Resurrectron</a></h1>
 
     <div class="description">
       May all the twitternets be drowned by the din of inhuman laughter.
     </div>
 
-    <p>A project to create a twitter+foursquare AI based on a person's tweets, blog posts, mailinglist posts, irc logs, foursquare data, and other written material.
+<p>Resurrectron is a project to create a twitter+foursquare AI based on a single person's tweets, blog posts, mailinglist posts, irc logs, foursquare data, and other written material.
 
-The AI uses a supervised HMM trained on POS tag Ngrams to generate novel text, and TF-IDF to respond to messages and interesting tweets by people that the AI follows. It can also operate in a pure quotation engine mode without the HMM.
+<p>The AI uses an <a href="http://en.wikipedia.org/wiki/Hidden_Markov_model">HMM</a> trained on part of speech Ngrams as a grammar model to generate novel text based on the input corpus, and uses an augmented <a href="http://en.wikipedia.org/wiki/Tf%E2%80%93idf">TF-IDF</a> search to respond to messages and interesting tweets by people that the AI follows.</p>
 
-Eventually it will also check in to foursquare and chat topically about its current location.
+<p>It can also operate in a pure quotation engine mode without the HMM, and
+will use TF-IDF to respond to messages with direct quotes from a quote pool in
+this mode.</p>
 
-For current capabilites see: 
-http://github.com/tdflatline/Resurrectron/blob/master/settings.cfg
+<p>It has a number of additional machine learning techniques to normalize and
+de-normalize highly colloquial twitter text, to cluster documents/tweets by
+topic for better HMM training, to correlate concepts of tweets and messages
+using <a href="http://en.wikipedia.org/wiki/WordNet#Knowledge_structure">Wordnet</a>'s <a
+href="http://en.wikipedia.org/wiki/Hyponym">hyponyms</a>, <a
+href="http://en.wikipedia.org/wiki/Hypernym">hypernyms</a>, and antomyms, and
+to remember the conversation context of each user that messages it.</p>
 
-For future plans, see:
-http://github.com/tdflatline/Resurrectron/blob/master/TODO.txt</p><h2>Dependencies</h2>
-<p>nltk 2.08b (http://www.nltk.org/), Nodebox linguistics 1.9.4.2 (http://nodebox.net/code/index.php/Linguistics), AGFL 2.8 (http://www.agfl.cs.ru.nl/download.html), CDL3 1.2.7 (http://www.cs.ru.nl/cdl3/)</p>
+<p>For more information on its current capabilites see the current 
+<a href="http://github.com/tdflatline/Resurrectron/blob/master/settings.cfg">settings file</a>.
+
+<p>Eventually it will also check in to foursquare and tweet topically about its current location. For more future plans, see the
+<a href="http://github.com/tdflatline/Resurrectron/blob/master/TODO.txt">TODO file.</a></p>
+
+<h2>Dependencies</h2>
+<ol>
+<li><a href="http://www.nltk.org">nltk 2.08b</a></li>
+<li><a href="http://nodebox.net/code/index.php/Linguistics">Nodebox linguistics 1.9.4.2</a>
+<li>Optional, but recommended: <a href="http://www.agfl.cs.ru.nl/download.html">AGFL 2.8</a> and <a href="http://www.cs.ru.nl/cdl3/">CDL3 1.2.7</a></li>
+</ol>
+
 <h2>Install</h2>
-<p>See http://github.com/tdflatline/Resurrectron/blob/master/README.txt</p>
-<h2>Authors</h2>
-<p>The Dixie Flatline (td.flatline@gmail.com)<br/><br/>      </p>
+<p>See the <a href="http://github.com/tdflatline/Resurrectron/blob/master/README.txt">README</a></p>
+
 <h2>Contact</h2>
-<p>The Dixie Flatline (td.flatline@gmail.com)<br/>      </p>
+<p>The Dixie Flatline (td.flatline on gmail)<br/>      </p>
 
 
     <h2>Download</h2>
