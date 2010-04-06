@@ -49,6 +49,12 @@ AI/ML Tasks:
        tags using current word + prev and next two POS tags
        - This will take less training data to train than a straight 4gram
          model
+   - If we improve nltk.pos_tag enough, we can drop AGFL entirely...
+     - However, we'll need to preserve certain other more specific grammar
+       transitions in some other statistical model though.. maybe a bigram
+       smoother?
+     - Or more specific POS tags. We have enough context.
+     - Or, just extract the relevant rules from AGFL by hand.
  - AGFL tweaks
    - Add modern lexicon like 'blog', 'tweet', 'gmail', 'email' to the grammar
    - Deal with AGFL's [1] and [2] POS tree references..
