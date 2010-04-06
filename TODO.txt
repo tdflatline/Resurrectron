@@ -43,6 +43,12 @@ AI/ML Tasks:
    - We may also want to strip off the subject off of training data.
      Tweets seem to omit "I", "You", "do you", etc, and this confuses
      nltk.pos_tag as is...
+   - My intuition tells me that some kind of smoothing step might be useful:
+     - https://groups.google.com/group/nltk-users/msg/c52df8fafe6b0948
+     - You take a second pass over the data using POS 4grams to smooth
+       tags using current word + prev and next two POS tags
+       - This will take less training data to train than a straight 4gram
+         model
  - AGFL tweaks
    - Add modern lexicon like 'blog', 'tweet', 'gmail', 'email' to the grammar
    - Deal with AGFL's [1] and [2] POS tree references..
