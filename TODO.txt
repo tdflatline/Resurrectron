@@ -24,6 +24,9 @@ Body Tasks:
 
 
 AI/ML Tasks:
+ - Consider applying POS TF-IDF weights during training
+   - The POS tags for the trained set should be better, esp if we use AGFL
+   - Maybe half the weight during training, half during test
  - Wordnet:
    - Consider adding tropnyms and entailment to wordnet use.
      May need to use nltk's wordnet instead of en's. Unless
