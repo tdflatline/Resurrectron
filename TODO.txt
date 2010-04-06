@@ -1,30 +1,40 @@
 Ideas for future work.
 
-Shorter term:
- - Give the AI a body (twitter)
+Body Tasks:
+ - Give the AI a body (twitter+foursquare)
    - Post at random time intervals
      - Learn sleep cycles of input corpus if jtwt is available.
        - Do this via post/hour frequency models
        - Allow user to specify a model
-   - Respond to @msgs/direct messages
-   - Use some really high TF-IDF threshold to @msg followers when they say
-     something "interesting"
-     - Will also need to rate limit this behavior in case multiple
-       people train AIs on the same corpus. That could lead to
-       conflagration...
    - Follow people when they follow it
+   - Respond to @msgs/direct messages/high TF-IDF followed messages
    - Attempt to learn things about people the AI follows/who @msg it
      - Invert personal pronouns
      - Maintain a separate SearchableTextCollection to use TF-IDF on
        for each person that it follows/receives an @msg from.
      - Probably no HMM, just kick back the fact-based statements with
        inverted pronouns.
- - AGFL tweaks
-   - Add modern lexicon like 'blog', 'tweet', 'gmail', 'email' to the grammar
-   - Deal with AGFL's [1] and [2] POS tree references..
-   - Retry questions as statements if they fail..
- - Other random XXX's, FIXME's and TODO's in the source.
- - Need to move capitalization model to bigram/trigram.
+ - Use FourSquare top12 locations
+   - use 4square data for location tags for tweets
+   - The bot can also geotag tweets with 4square location information
+     and actually check in to locations on the 4square list.
+     - 4square has an api for this we can use.
+     - we can prime the memory vector with terms related to the current
+       4square location so tweets while it is "at" a location are topical.
+
+
+AI/ML Tasks:
+ - Need to move capitalization model to bigram w/ unigram fallback...
+   - some words should only captialized in pairs/streaks, others
+     can be capitalized by themselves..
+ - Experiment with LDA as opposed to K-Means+TF-IDF for topic clustering
+   - Also is TF-IDF the right vector to use, or should it just be
+     binary bag of words?
+   - http://www.cs.princeton.edu/~blei/papers/BleiNgJordan2003.pdf
+   - Python implementations:
+     - https://mlpy.fbk.eu/
+     - http://pages.cs.wisc.edu/~andrzeje/research/delta_lda.html
+     - http://pages.cs.wisc.edu/~andrzeje/research/df_lda.html
  - We can improve nltk.pos_tag using:
    https://groups.google.com/group/nltk-users/browse_thread/thread/5af97ff339e13b5a
    http://streamhacker.com/2008/11/03/part-of-speech-tagging-with-nltk-part-1/
@@ -33,27 +43,13 @@ Shorter term:
    - We may also want to strip off the subject off of training data.
      Tweets seem to omit "I", "You", "do you", etc, and this confuses
      nltk.pos_tag as is...
-
-Longer term:
- - randomly lament about missing Foursquare top12 locations
-   - Also use 4square data for location tags for tweets
-   - The bot can also geotag tweets with 4square location information
-     and actually check in to locations on the 4square list.
-     - 4square has an api for this we can use.
-     - we can prime the memory vector with terms related to the current
-       4square location so tweets while it is at a location are topical.
- - Use URL contents for TF-IDF in quote_engine_only mode.
+ - AGFL tweaks
+   - Add modern lexicon like 'blog', 'tweet', 'gmail', 'email' to the grammar
+   - Deal with AGFL's [1] and [2] POS tree references..
+   - Retry questions as statements if they fail..
  - May need Word-sense disambiguation to trim down wordnet's
+ - Use URL contents for TF-IDF in quote_engine_only mode.
    hyponym and hypernym sets.
- - train multiple HMM's on topically classified/tagged text.
-   - This will prevent topic bleedover and keep tweets more sensible.
-   - Can possibly even cluster corpus tweets using an unsupervised algorithm
-     - But be sure to use wordnet's synsets, hyponyms, hypernyms, and
-       antonyms as input to cluster alg.
-     - Use tf-idf score vectors as the vectors to cluster
-     - Load a .topics file from the target_user directory that summarizes
-       each topic the AI will talk about, written how the target user
-       would say it.
  - Do map-reduce for faster training on multi-core or even multi-node systems
    - The expensive functions are pos_tag() in extract.py and the
      __phrase_worker2() loop in resurrect.py (the combination of
@@ -62,6 +58,10 @@ Longer term:
      the corpus and the next to generate a tweet pool.
    - execnet seems like the solution we'd want:
      http://streamhacker.com/2009/11/29/distributed-nltk-execnet/
+ - Other random XXX's, FIXME's and TODO's in the source.
+
+
+Hypothetical/speculation:
  - Alter HMM output based on query?
    - Instead of maintaining a tweet pool for TF-IDF, we could try to directly
      influence the HMM states based on query vocab.
