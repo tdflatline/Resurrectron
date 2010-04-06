@@ -1,3 +1,45 @@
+diff -ur nltk-2.0b8/nltk/cluster/kmeans.py nltk-2.0b8.orig/nltk/cluster/kmeans.py
+--- nltk-2.0b8/nltk/cluster/kmeans.py	2010-04-05 17:12:37.637327745 -0700
++++ nltk-2.0b8.orig/nltk/cluster/kmeans.py	2010-01-26 13:29:16.000000000 -0800
+@@ -67,8 +67,8 @@
+             if trace: print 'k-means trial', trial
+             if not self._means or trial > 1:
+                 self._means = self._rng.sample(vectors, self._num_means)
+-            if self._cluster_vectorspace(vectors, trace):
+-                meanss.append(self._means)
++            self._cluster_vectorspace(vectors, trace)
++            meanss.append(self._means)
+ 
+         if len(meanss) > 1:
+             # sort the means first (so that different cluster numbering won't
+@@ -101,18 +101,6 @@
+                     index = self.classify_vectorspace(vector)
+                     clusters[index].append(vector)
+ 
+-                # XXX: Is this the right way to go?
+-                # Often we *do* end up with empty clusters...
+-                # Should we allow this and just skip this trial, or reduce
+-                # the number of clusters.
+-                too_many_means = False
+-                for c in clusters:
+-                    if len(c) == 0:
+-                        too_many_means = True
+-                        self._num_means -= 1
+-                if too_many_means:
+-                    return False
+-
+                 if trace: print 'iteration'
+                 #for i in range(self._num_means):
+                     #print '  mean', i, 'allocated', len(clusters[i]), 'vectors'
+@@ -127,8 +115,6 @@
+ 
+                 # remember the new means
+                 self._means = new_means
+-            return True
+-        return False
+ 
+     def classify_vectorspace(self, vector):
+         # finds the closest cluster centroid
 diff -ur nltk-2.0b8/nltk/cluster/util.py nltk-2.0b8.orig/nltk/cluster/util.py
 --- nltk-2.0b8/nltk/cluster/util.py	2010-04-05 03:58:01.994668794 -0700
 +++ nltk-2.0b8.orig/nltk/cluster/util.py	2010-01-26 13:29:16.000000000 -0800
