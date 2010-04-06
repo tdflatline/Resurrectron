@@ -2,6 +2,7 @@ Quick steps:
 
 0. Download and install nltk-2.08b and all its dependencies:
    http://www.nltk.org/
+   Apply the clustering patch in ./patches/nltk-cluster.diff
 1. Download and install the NodeBox linguistics library:
    http://nodebox.net/code/index.php/Linguistics (we use 1.9.4.2).
    This one just needs to be in your $PYTHONPATH

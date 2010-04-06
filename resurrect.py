@@ -605,9 +605,14 @@ class TwitterBrain:
         self.pending_goal = config.getint("brain", "tweet_pool_max")
 
       self.low_watermark = self.pending_goal - 85 # FIXME: config?
-      self.voice = PhraseGenerator(soul.tagged_tweets, soul.normalizer,
-                            config.getint("brain", "hmm_context"),
-                            config.getint("brain", "hmm_offset"))
+      self.cluster_rates = soul.cluster_rates
+      self.total_tweets = len(soul.tagged_tweets)
+      self.voice = {}
+      for i in soul.clustered_tweets:
+        self.voice[i] = PhraseGenerator(soul.clustered_tweets[i],
+                              soul.normalizer,
+                              config.getint("brain", "hmm_context"),
+                              config.getint("brain", "hmm_offset"))
       if self.pending_tweets.needs_update:
         self.pending_tweets.update_matrix()
 
@@ -755,7 +760,21 @@ class TwitterBrain:
       if len(self.pending_tweets.texts) <= self.low_watermark:
         while len(self.pending_tweets.texts) < self.pending_goal:
           self.__lock()
-          (tweet,tokens,tagged_tokens) = self.voice.say_something()
+          hmm_choice = random.randint(0,self.total_tweets-1)
+          curr_choice = 0
+          chose_hmm = False
+          for i in self.cluster_rates.iterkeys():
+             curr_choice += self.cluster_rates[i]
+             if curr_choice >= hmm_choice:
+               chose_hmm = True
+               (tweet,tokens,tagged_tokens) = self.voice[i].say_something()
+               break
+
+          if not chose_hmm:
+            # This should never happen.
+            print "Failed to choose an HMM to use!"
+            self.__unlock()
+            continue
 
           if len(tweet) > config.getint("brain", "tweet_len") \
                 or self.__did_already_tweet(set(tokens)):

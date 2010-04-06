@@ -16,7 +16,7 @@ import cPickle as pickle
 import random
 import curses.ascii
 import traceback
-#import twitter
+import sys
 
 from libs.SpeechModels import TokenNormalizer, PhraseGenerator
 from libs.tokenizer import word_tokenize, word_detokenize
@@ -35,6 +35,7 @@ class CorpusSoul:
     # FIXME: http://www.w3schools.com/HTML/html_entities.asp
     clean_ents = [("&lt;", "<"), ("&gt;", ">"), ("&amp;", "&")]
     tagged_tweets = []
+    tweet_texts = []
     self.vocab = set([])
     for root, dirs, files in os.walk(directory):
       for f in files:
@@ -53,12 +54,15 @@ class CorpusSoul:
               tagged_tweets.append(txt)
             else:
               tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
-              self.vocab.update(tokens)
-              tagged_tweet = pos_tag(tokens,
-                               config.getboolean("soul","attempt_agfl"),
-                               config.getboolean("soul","reject_agfl_failures"),
-                               config.getboolean("soul","agfl_nltk_fallback"))
-              if tagged_tweet: tagged_tweets.append(tagged_tweet)
+              if tokens:
+                self.vocab.update(tokens)
+                tagged_tweet = pos_tag(tokens,
+                                 config.getboolean("soul","attempt_agfl"),
+                                 config.getboolean("soul","reject_agfl_failures"),
+                                 config.getboolean("soul","agfl_nltk_fallback"))
+                if tagged_tweet:
+                  tweet_texts.append(word_detokenize(tokens))
+                  tagged_tweets.append(tagged_tweet)
             print "Loaded tweet #"+str(len(tagged_tweets)) #+"/"+str(len(files))
         # .twt: plain-text tweets, 1 per line
         elif f.endswith(".twt"):
@@ -73,12 +77,15 @@ class CorpusSoul:
               tagged_tweets.append(txt)
             else:
               tokens = self.normalizer.normalize_tokens(word_tokenize(txt))
-              self.vocab.update(tokens)
-              tagged_tweet = pos_tag(tokens,
-                               config.getboolean("soul","attempt_agfl"),
-                               config.getboolean("soul","reject_agfl_failures"),
-                               config.getboolean("soul","agfl_nltk_fallback"))
-              if tagged_tweet: tagged_tweets.append(tagged_tweet)
+              if tokens:
+                self.vocab.update(tokens)
+                tagged_tweet = pos_tag(tokens,
+                              config.getboolean("soul","attempt_agfl"),
+                              config.getboolean("soul","reject_agfl_failures"),
+                              config.getboolean("soul","agfl_nltk_fallback"))
+                if tagged_tweet:
+                  tweet_texts.append(word_detokenize(tokens))
+                  tagged_tweets.append(tagged_tweet)
             print "Loaded tweet #"+str(len(tagged_tweets)) #+"/"+str(len(files))
           pass
         # .post: long-winded material (blog/mailinglist posts, essays, articles, etc)
@@ -100,7 +107,9 @@ class CorpusSoul:
                                config.getboolean("soul","attempt_agfl"),
                                config.getboolean("soul","reject_agfl_failures"),
                                config.getboolean("soul","agfl_nltk_fallback"))
-                if tagged_tweet: tagged_tweets.append(tagged_tweet)
+                if tagged_tweet:
+                  tweet_texts.append(word_detokenize(tokens))
+                  tagged_tweets.append(tagged_tweet)
             print "Loaded post-tweet #"+str(len(tagged_tweets))
         # .irclog: irc log files. irssi format.
         elif f.endswith(".irclog"):
@@ -110,6 +119,15 @@ class CorpusSoul:
           pass
 
     self.tagged_tweets = tagged_tweets
+
+    num_clusters = config.getint('soul', 'tweet_topics')
+    if num_clusters > 1:
+      self.cluster_tweets(tweet_texts, num_clusters)
+    else:
+      self.cluster_rates = {}
+      self.clustered_tweets = {}
+      self.clustered_tweets[0] = tagged_tweets
+      self.cluster_rates[0] = len(self.tagged_tweets)
 
   def post_to_tweets(self, post, summarize=False):
     # We do poorly with parentheticals. Just kill them.
@@ -128,6 +146,39 @@ class CorpusSoul:
         if tweet: tweets.append(tweet)
         tweet = ""
     return tweets
+
+  def cluster_tweets(self, tweet_texts, num_clusters=3):
+    # XXX: move SearchableTextCollection to libs
+    from resurrect import SearchableTextCollection,SearchableText
+
+    print "Scoring tweets.."
+    tc = SearchableTextCollection(self.vocab)
+    for tweet in tweet_texts:
+      txt = SearchableText(tweet)
+      tc.add_text(txt)
+    tc.update_matrix()
+    print "Scored tweets.."
+    print "Clustering tweets.."
+    cluster = nltk.cluster.KMeansClusterer(num_clusters,
+                 nltk.cluster.util.euclidean_distance,
+                 repeats=20*num_clusters)
+    # EM takes waaaaaayy too long, even with SVD
+    #cluster = nltk.cluster.EMClusterer(means, svd_dimensions=100)
+    clustered = cluster.cluster(tc.D, assign_clusters=True)
+    print "Clustered tweets.."
+    clustered_tweets = {}
+    for i in xrange(len(clustered)):
+      if clustered[i] not in clustered_tweets:
+        clustered_tweets[clustered[i]] = []
+      clustered_tweets[clustered[i]].append(self.tagged_tweets[i])
+    self.cluster_rates = {}
+    for i in clustered_tweets.iterkeys():
+      self.cluster_rates[i] = len(clustered_tweets[i])
+      print
+      print "Cluster "+str(i)+": "+str(len(clustered_tweets[i]))
+      for t in clustered_tweets[i]:
+        print t
+    self.clustered_tweets = clustered_tweets
 
 def main():
   try:
