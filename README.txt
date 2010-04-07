@@ -17,6 +17,7 @@ Quick steps:
    by hand, which can contain 1 quote/quip per line.
 5. Throw them in the directory ./target_user/
 6. Optional: Tweak settings in ./settings.cfg for your use case.
+   See the FAQ.txt for hints on when to tweak which settings.
 7. Run ./resurrect.py to generate a .soul file and a .brain file.
 8. Torment the AI to your hearts content.
 9. Hit Control-D, Control-C, or :q!<enter> to exit.

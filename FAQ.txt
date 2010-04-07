@@ -1,0 +1,134 @@
+                         Resurrectron FAQ
+
+This document is meant primarily to help you determine which
+settings.cfg settings to tweak if you have issues with various aspects
+of the AI.
+
+
+Table of Contents
+  1. Training is taking too long. What can I do?
+  2. The AI does not respond sensibly to messages. What can I do?
+  3. The output tweets of the AI make no sense. What can I do?
+
+
+1. Training is taking too long. What can I do?
+
+   There are two steps to training. The first is parsing/tagging and
+   optionally clustering the corpus into topics (extracting the 'soul').
+   The second is generating and scoring the tweet pool (resurrecting
+   the 'brain').
+
+   If the soul generation is taking a long time and you are using blog
+   posts, you can consider setting the following options:
+
+      post_summarize=True
+      post_summarize_len=3 (or lower)
+
+   These will cause your blog posts to be summarized down to 3 sentences
+   each.
+
+   If you are training on either tweets or blogs, you can consider
+   disabling AGFL with:
+
+      attempt_agfl=False
+
+   However, this will negatively affect the AIs resulting output. It
+   will use poor grammar and often make little sense.
+
+   You can also try disabling tagging and HMM generation altogether with:
+
+      quote_engine_only=True
+
+   If the brain generation is what is really making things slow, this can
+   be due to a few reasons.
+
+   If it is taking a long time to generate each tweet for the pool,
+   this is because the tweets being generated are too similar to
+   either existing tweets. You should either reduce hmm_context:
+
+      hmm_context=3
+
+   Or increase the maximum ratio of shared words with previous tweets:
+
+      max_shared_word_ratio=0.9
+
+   The tweet generation process may also get slower as it gets farther
+   along, again because it will become harder to generate unique text.
+   You may want to put a better cap on your tweet pool by tweaking:
+
+      tweet_pool_multiplier
+      tweet_pool_max
+
+
+2. The AI does not respond sensibly to messages. What can I do?
+
+  The primary options you should tweak are in the [query] section of
+  the settings.cfg file.
+
+  If you feel like certain parts of speech, for example nouns, are
+  being ignored or not used as much as they should be, you can try
+  tweaking the config settings *_trainweight and *_queryweight.
+
+  The advantage of using the *_trainweight versions are that the
+  part of speech tags for the training data are likely to be more
+  accurate, especially if you use AGFL. The advantage of the
+  *_queryweight versions are that you can change them quickly
+  and test the results immediately without needing to do a long
+  retrain.
+
+  If you feel like the memory is not working properly, or the AI
+  is too prone to repeating very similar sentences, you can try
+  increasing 'memory_decay_rate':
+
+     memory_decay_rate = 0.666
+
+  If you feel that the AI is responding with only tangentially
+  related terms and this is ruining your results, you can try to
+  set 'generalize_terms=False'.
+
+
+3. The output tweets of the AI make no sense. What can I do?
+
+  If the AI is not making grammatical sense, you can try playing with
+  hmm_context and hmm_offset, but subjectively I have found the
+  defaults to produce the best sounding output.
+
+  Your best bet is to look for cleaner source material. For example, blog
+  posts as opposed to twitter feeds. If your target uses a lot of slang
+  and abbreviations, you can try adding them to TokenNormalizer.mono_map
+  in ./libs/SpeechModels.py, and that should help a lot.
+
+  If the AI seems to be doing a lot of mixing of multiple different
+  topics in its output and is making grammatical but not semantic sense,
+  you can try to cluster the input tweets into a fixed number of topics
+  that you believe your target user tends to talk about. This is done
+  with the setting:
+
+     tweet_topics = n
+
+  You want to make sure that you have enough tweets for each topic to
+  have ~100 tweets in it or more.
+
+  If you do this, you will need to apply ./patches/nltk-cluster.diff to
+  nltk-2.08b. It has fixes for some k-means bugs.
+
+  If you've tried everything and just aren't satisfied with the
+  output, you can try reverting to quote engine mode, where the AI will
+  use its input corpus verbatim to respond to messages and follower's
+  text:
+
+     quote_engine_only = True
+
+  However, if you're not ready to give up just yet, there is actually
+  some coding work that can be done to improve both the AI's grammar
+  and semantic capabilities. Have a look at the TODO.txt file for more
+  details, but in short, improving nltk.pos_tag() will help with the
+  output grammar, as will providing more lexicon entries to AGFL.
+
+  The clustering algorithm to cluster tweets into topics is currently
+  k-means+TF-IDF. Supposedly LDA is a better algorithm for this
+  purpose, and may result in better topical clustering, which should
+  result in better output semantics for the AI. The TODO file lists
+  several python LDA libraries which might be used as drop-in
+  replacements for k-means in CorpusSoul.cluster_tweets() in
+  ./extract.py.

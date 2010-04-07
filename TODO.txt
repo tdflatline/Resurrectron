@@ -32,7 +32,7 @@ AI/ML Tasks:
      May need to use nltk's wordnet instead of en's. Unless
      en automatically includes troponyms and entailment in hyponyms?
      - If we do this we can possibly ditch the en dependency.
-   - Add condif options to disable individual wordnet sets
+   - Add config options to disable individual wordnet sets
    - May need Word-sense disambiguation to trim down wordnet's
      hyponym and hypernym sets.
  - Need to move capitalization model to bigram w/ unigram fallback...
